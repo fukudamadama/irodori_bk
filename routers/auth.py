@@ -59,4 +59,4 @@ def get_current_user(request: Request, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    return UserResponse.from_orm(user)
+    return UserResponse.model_validate(user)
