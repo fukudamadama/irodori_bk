@@ -6,7 +6,7 @@ class UserRegister(BaseModel):
     last_name: str
     first_name: str
     email: EmailStr
-    birth_date: date
+    birthdate: date
     postal_code: str
     address: str
     phone_number: str
@@ -55,7 +55,7 @@ class UserResponse(BaseModel):
     last_name: str
     first_name: str
     email: str
-    birth_date: date
+    birthdate: date
     postal_code: str
     address: str
     phone_number: str

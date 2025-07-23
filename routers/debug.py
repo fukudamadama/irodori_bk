@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from models import get_db, User, hash_password
 from datetime import date, datetime
 import uuid
@@ -22,15 +23,14 @@ def get_all_users(db: Session = Depends(get_db)):
                 "last_name": user.last_name,
                 "first_name": user.first_name,
                 "email": user.email,
-                "birth_date": user.birth_date.isoformat() if user.birth_date else None,
+                "birthdate": user.birthdate.isoformat() if user.birthdate else None,
                 "postal_code": user.postal_code,
                 "address": user.address,
                 "phone_number": user.phone_number,
                 "occupation": user.occupation,
                 "company_name": user.company_name,
                 "password_hash": user.password_hash[:20] + "..." if user.password_hash else None,  # セキュリティのため一部のみ表示
-                "created_at": user.created_at.isoformat() if user.created_at else None,
-                "updated_at": user.updated_at.isoformat() if user.updated_at else None
+                "created_at": user.created_at.isoformat() if user.created_at else None
             }
             users_list.append(user_dict)
         
@@ -64,7 +64,7 @@ def create_test_user(db: Session = Depends(get_db)):
             last_name="田中",
             first_name="太郎",
             email=test_email,
-            birth_date=date(1990, 1, 1),
+            birthdate=date(1990, 1, 1),
             postal_code="123-4567",
             address=f"東京都新宿区テスト町1-{unique_id[:3]}番地",
             phone_number="09012345678",
@@ -99,7 +99,7 @@ def get_database_info(db: Session = Depends(get_db)):
     """
     try:
         # データベース接続テスト
-        result = db.execute("SELECT 1 as test").fetchone()
+        result = db.execute(text("SELECT 1 as test")).fetchone()
         
         # usersテーブルの存在確認とレコード数取得
         user_count = db.query(User).count()
