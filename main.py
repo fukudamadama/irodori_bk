@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from starlette.middleware.sessions import SessionMiddleware
 from fastapi.middleware.cors import CORSMiddleware
-from routers import auth, debug
+from routers import auth
 import os
 
 app = FastAPI(title="User Authentication API", version="1.0.0")
@@ -12,16 +12,17 @@ app.add_middleware(
     max_age=int(os.getenv("SESSION_MAX_AGE", "3600"))
 )
 
+allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["*"],
 )
 
 app.include_router(auth.router)
-app.include_router(debug.router)
 
 @app.get("/")
 def read_root():

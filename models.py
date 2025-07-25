@@ -5,9 +5,7 @@ from datetime import datetime, timezone
 import bcrypt
 import os
 
-# 環境変数の読み込み
-from dotenv import load_dotenv
-load_dotenv()
+# 環境変数は os.getenv() でアクセス
 
 # Azure MySQL 接続設定
 def get_database_url():
