@@ -57,5 +57,4 @@ jobs:
           app-name: 'aps-IRODORI-02-service'
           slot-name: 'Production'
           package: .
-          startup-command: 'python startup.py'
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_B59AC015B46846F8A936B6CDDA58175C }}
