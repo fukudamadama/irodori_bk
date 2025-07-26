@@ -28,8 +28,7 @@ app.include_router(auth.router)
 def read_root():
     return {"message": "User Authentication API is running"}
 
+# Azure App Service will use startup.py instead of this
 if __name__ == "__main__":
     import uvicorn
-    host = os.getenv("HOST", "0.0.0.0")
-    port = int(os.getenv("PORT", "8000"))
-    uvicorn.run("main:app", host=host, port=port, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
