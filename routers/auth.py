@@ -45,9 +45,7 @@ def login_user(login_data: UserLogin, request: Request, db: Session = Depends(ge
 
 @router.get("/logout", response_model=MessageResponse)
 def logout_user(request: Request):
-    if "user_id" not in request.session:
-        raise HTTPException(status_code=401, detail="Not logged in")
-    
+    # セッションをクリア（ログイン状態に関係なく）
     request.session.clear()
     return MessageResponse(message="Logout successful")
 
