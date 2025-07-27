@@ -1,0 +1,112 @@
+# IRODORI API仕様書
+
+## 概要
+ユーザー登録・ログイン機能を提供するFastAPI ベースのREST API
+
+ベースURL: https://aps-irodori-02-service-agheduaahbcta4ce.eastasia-01.azurewebsites.net
+
+---
+
+## API エンドポイント
+
+### 1. ヘルスチェック
+GET /
+
+説明: APIの動作確認
+レスポンス: 
+{
+  "message": "User Authentication API is running"
+}
+
+### 2. ユーザー登録
+POST /register
+
+説明: 新規ユーザーアカウントを作成
+
+リクエストボディ:
+{
+  "last_name": "田中",
+  "first_name": "太郎",
+  "email": "tanaka@example.com",
+  "birthdate": "1990-01-01",
+  "postal_code": "123-4567",
+  "address": "東京都渋谷区1-1-1",
+  "phone_number": "090-1234-5678",
+  "occupation": "エンジニア",
+  "company_name": "株式会社サンプル",
+  "password": "password123",
+  "password_confirm": "password123"
+}
+
+成功レスポンス (201):
+{
+  "message": "User registered successfully"
+}
+
+エラーレスポンス (400):
+{
+  "detail": "Email already registered"
+}
+
+### 3. ログイン
+POST /login
+
+説明: ユーザー認証を行い、セッションを開始
+
+リクエストボディ:
+{
+  "email": "tanaka@example.com",
+  "password": "password123"
+}
+
+成功レスポンス (200):
+{
+  "message": "Login successful"
+}
+
+エラーレスポンス (401):
+{
+  "detail": "Invalid email or password"
+}
+
+### 4. ログアウト
+GET /logout
+
+説明: セッションを終了
+
+成功レスポンス (200):
+{
+  "message": "Logout successful"
+}
+
+---
+
+## バリデーション仕様
+
+項目                  | ルール
+---------------------|--------
+姓・名               | 空欄不可
+メールアドレス       | 正しい形式、重複不可
+生年月日             | YYYY-MM-DD形式
+郵便番号             | 日本形式（123-4567）
+住所                 | 空欄不可
+電話番号             | 10〜11桁の数字（ハイフン含む可）
+職業・勤務先         | 空欄不可
+パスワード           | 8文字以上、確認欄と一致
+
+---
+
+## セキュリティ仕様
+
+- パスワードハッシュ化: bcryptを使用
+- セッション管理: HTTPSでセキュアなセッションCookie
+- CORS設定: 特定ドメインからのアクセスのみ許可
+- バリデーション: Pydanticによる入力検証
+
+---
+
+## フロントエンドURL
+
+- 登録ページ: https://aps-irodori-01-service-habzggebhadug7fg.eastasia-01.azurewebsites.net/register
+- ログインページ: https://aps-irodori-01-service-habzggebhadug7fg.eastasia-01.azurewebsites.net/login
+- ダッシュボード: https://aps-irodori-01-service-habzggebhadug7fg.eastasia-01.azurewebsites.net/
