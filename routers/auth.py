@@ -49,14 +49,3 @@ def logout_user(request: Request):
     request.session.clear()
     return MessageResponse(message="Logout successful")
 
-@router.get("/me", response_model=UserResponse)
-def get_current_user(request: Request, db: Session = Depends(get_db)):
-    user_id = request.session.get("user_id")
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Not logged in")
-    
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    return UserResponse.model_validate(user)
