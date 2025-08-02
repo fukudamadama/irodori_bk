@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Date, DateTime
+from sqlalchemy import Column, Integer, String, Date, DateTime, ForeignKey
 from datetime import datetime, timezone
 from database import Base, engine
 
@@ -16,6 +16,15 @@ class User(Base):
     occupation = Column(String(100), nullable=False)
     company_name = Column(String(100), nullable=False)
     password_hash = Column(String(255), nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+class Preference(Base):
+    __tablename__ = "preferences"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    question = Column(String(500), nullable=False)
+    selected_answers = Column(String(1000), nullable=False)  # セミコロン区切りの文字列
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 Base.metadata.create_all(bind=engine)

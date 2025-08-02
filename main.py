@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from starlette.middleware.sessions import SessionMiddleware
 from fastapi.middleware.cors import CORSMiddleware
-from routers import auth
+from routers import auth, onboarding
 import os
 
 app = FastAPI(title="User Authentication API", version="1.0.0")
@@ -23,6 +23,7 @@ app.add_middleware(
 )
 
 app.include_router(auth.router)
+app.include_router(onboarding.router)
 
 @app.get("/")
 def read_root():

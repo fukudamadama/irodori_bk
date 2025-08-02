@@ -1,5 +1,6 @@
-from pydantic import BaseModel, EmailStr, validator
+from pydantic import BaseModel, EmailStr, validator, Field
 from datetime import date
+from typing import List
 import re
 
 class UserRegister(BaseModel):
@@ -67,3 +68,32 @@ class UserResponse(BaseModel):
 
 class MessageResponse(BaseModel):
     message: str
+
+class Preference(BaseModel):
+    id: int = Field(..., description="ID")
+    user_id: int = Field(..., description="ユーザーID")
+    question: str = Field(..., description="質問の内容", example="好きな色は何ですか？")
+    selected_answers: List[str] = Field(..., description="選択された回答のリスト（複数選択可能）", example=["赤", "青"])
+
+class PreferenceCreate(BaseModel):
+    user_id: int = Field(..., description="ユーザーID", gt=0)
+    question: str = Field(..., description="質問の内容", min_length=1, example="好きな色は何ですか？")
+    selected_answers: List[str] = Field(..., description="選択された回答のリスト（複数選択可能）", min_items=1, example=["赤", "青"])
+
+    @validator('user_id')
+    def validate_user_id(cls, v):
+        if v <= 0:
+            raise ValueError('ユーザーIDは1以上の値を指定してください')
+        return v
+
+    @validator('question')
+    def validate_question(cls, v):
+        if not v or not v.strip():
+            raise ValueError('質問内容を入力してください')
+        return v.strip()
+
+    @validator('selected_answers')
+    def validate_selected_answers(cls, v):
+        if not v:
+            raise ValueError('回答を1つ以上選択してください')
+        return v
