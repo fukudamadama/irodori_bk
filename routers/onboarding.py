@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Query, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
-from models import Preference as PreferenceModel, User
-from schemas import PreferenceCreate, Preference
+from models import Preference as PreferenceModel, User, RecipeTemplate as RecipeTemplateModel, RuleTemplate as RuleTemplateModel
+from schemas import PreferenceCreate, Preference, RecipeTemplateWithRuleTemplates, RuleTemplateWithTriggerAndAction, Trigger, Action
 from typing import List
 
 router = APIRouter(prefix="/onboarding", tags=["onboarding"])
@@ -113,4 +113,35 @@ def get_preferences(user_id: int = Query(..., description="ユーザーID", ge=1
             selected_answers=db_pref.selected_answers.split(";") if db_pref.selected_answers else []
         ))
     
+    return result
+
+@router.get(
+    "/recommended_recipes", 
+    response_model=List[RecipeTemplateWithRuleTemplates],
+    summary="ユーザーに対し導入が推奨されるレシピテンプレート(ルールテンプレートを含む)を取得",
+)
+def get_recommend_recipe_templates(user_id: int = Query(..., description="ユーザーID", ge=1), db: Session = Depends(get_db)):
+       
+    # ユーザーの属性・傾向に関する質問と回答を取得
+
+    # ユーザーの属性・傾向に関する質問と回答をもとに、導入が推奨されるレシピテンプレート(ルールテンプレートを含む)を取得
+    # すべてのレシピテンプレートとそれに紐づくルールテンプレートを取得
+    recipe_templates = db.query(RecipeTemplateModel).all()
+    result = []
+    for recipe in recipe_templates:
+        # SQLAlchemyオブジェクトから直接Pydanticスキーマを作成
+        rule_templates = [RuleTemplateWithTriggerAndAction.model_validate(rule) for rule in recipe.rule_templates]
+        result.append(RecipeTemplateWithRuleTemplates(
+            id=recipe.id,
+            name=recipe.name,
+            description=recipe.description,
+            author_id=recipe.author_id,
+            is_public=recipe.is_public,
+            likes_count=recipe.likes_count,
+            copies_count=recipe.copies_count,
+            created_at=recipe.created_at,
+            updated_at=recipe.updated_at,
+            rules=rule_templates
+        ))
+
     return result

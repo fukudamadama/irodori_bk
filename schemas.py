@@ -1,7 +1,8 @@
 from pydantic import BaseModel, EmailStr, validator, Field
-from datetime import date
-from typing import List
+from datetime import date, datetime
+from typing import List, Any
 import re
+from enums import RuleCategory
 
 class UserRegister(BaseModel):
     last_name: str
@@ -97,3 +98,56 @@ class PreferenceCreate(BaseModel):
         if not v:
             raise ValueError('回答を1つ以上選択してください')
         return v
+
+
+class Trigger(BaseModel):
+    id: int = Field(..., description="ID")
+    name: str = Field(..., description="トリガーの名前")
+    description: str = Field(..., description="トリガーの説明")
+    required_params: Any = Field(..., description="必要なパラメータ")
+
+    class Config:
+        from_attributes = True
+
+class Action(BaseModel):
+    id: int = Field(..., description="ID")
+    name: str = Field(..., description="アクションの名前")
+    description: str = Field(..., description="アクションの説明")
+    required_params: Any = Field(..., description="必要なパラメータ")
+
+    class Config:
+        from_attributes = True
+
+class RuleTemplateWithTriggerAndAction(BaseModel):
+    id: int = Field(..., description="ID")
+    name: str = Field(..., description="ルールテンプレートの名前")
+    description: str = Field(..., description="ルールテンプレートの説明")
+    category: RuleCategory = Field(..., description="ルールテンプレートのカテゴリ")
+    author_id: int = Field(..., description="作成者のユーザーID")
+    is_public: bool = Field(..., description="公開設定")
+    likes_count: int = Field(..., description="いいね数")
+    copies_count: int = Field(..., description="コピー数")
+    created_at: datetime = Field(..., description="作成日時")
+    updated_at: datetime = Field(..., description="更新日時")
+    trigger: Trigger = Field(..., description="トリガー")
+    trigger_params: Any = Field(..., description="トリガーのパラメータ")  
+    action: Action = Field(..., description="アクション")
+    action_params: Any = Field(..., description="アクションのパラメータ")
+
+    class Config:
+        from_attributes = True
+
+class RecipeTemplateWithRuleTemplates(BaseModel):
+    id: int = Field(..., description="ID")
+    name: str = Field(..., description="レシピテンプレートの名前")
+    description: str = Field(..., description="レシピテンプレートの説明")
+    author_id: int = Field(..., description="作成者のユーザーID")
+    is_public: bool = Field(..., description="公開設定")
+    likes_count: int = Field(..., description="いいね数")
+    copies_count: int = Field(..., description="コピー数")
+    created_at: datetime = Field(..., description="作成日時")
+    updated_at: datetime = Field(..., description="更新日時")
+    rules: List[RuleTemplateWithTriggerAndAction] = Field(..., description="ルールテンプレートのリスト")
+
+    class Config:
+        from_attributes = True
