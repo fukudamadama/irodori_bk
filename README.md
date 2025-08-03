@@ -16,30 +16,8 @@ python main.py
 
 ```bash
 # .env ファイルに設定
-OPENAI_API_KEY=your_openai_api_key_here  # OpenAI APIキー（財務インサイト生成用）
-```
-
-## アーキテクチャ
-
-### サービス層
-
-`services/` ディレクトリに外部 API 連携やビジネスロジックを配置：
-
-- `openai_service.py`: OpenAI API 呼び出しと財務インサイト生成
-- `prompt_templates.py`: AI プロンプトテンプレートの管理
-- `service_factory.py`: サービスの依存性注入とファクトリーパターン
-
-## シードデータ
-
-アプリケーション起動時に自動でサンプルデータを投入できます。
-
-### 設定方法
-
-環境変数でシード動作を制御：
-
-```bash
-# .env ファイルまたは環境変数で設定
-SEED_DEMO_DATA=true          # シードを実行するか
+OPENAI_API_KEY=your_openai_api_key_here  # OpenAI APIキー
+SEED_DEMO_DATA=true          # サンプルデータを投入（シード）するか
 FORCE_SEED=false             # 既存データがあっても強制実行するか
 ```
 
@@ -72,3 +50,5 @@ This repository includes GitHub Actions workflow for automatic deployment to Azu
 - `POST /onboarding/preference` - 単一のユーザー傾向を保存
 - `POST /onboarding/preferences` - 複数のユーザー傾向のリストを一括で保存
 - `GET /onboarding/preferences` - 特定のユーザーに紐づくすべてのユーザー傾向を一括で取得
+- `GET /onboarding/financial-report` - ユーザーの財務状況を分析し、インサイトと支出のカテゴリごとの合計金額を取得
+- `GET /onboarding/recommended_recipes` - ユーザーに対し導入が推奨されるレシピテンプレート(ルールテンプレートを含む)を取得

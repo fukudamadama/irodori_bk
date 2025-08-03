@@ -24,43 +24,43 @@ class OpenAIService:
         if self.api_key:
             self.client = openai.OpenAI(api_key=self.api_key)
     
-    def _format_user_preferences(self, preferences) -> str:
+    def _format_user_preferences(self, preference_entities) -> str:
         """
         ユーザーの設定をフォーマット
         
         Args:
-            preferences: PreferenceModelのクエリ結果
+            preference_entities: PreferenceModelのクエリ結果
             
         Returns:
             str: フォーマットされたユーザー回答
         """
-        user_preferences = ""
-        for pref in preferences:
-            user_preferences += f"質問: {pref.question}\n回答: {pref.selected_answers}\n\n"
-        return user_preferences
+        formatted_preferences = ""
+        for preference_entity in preference_entities:
+            formatted_preferences += f"質問: {preference_entity.question}\n回答: {preference_entity.selected_answers}\n\n"
+        return formatted_preferences
     
-    def _format_transaction_summary(self, transactions: List[dict]) -> str:
+    def _format_transaction_summary(self, financial_transactions: List[dict]) -> str:
         """
-        トランザクションサマリーをフォーマット
+        取引データの概要をフォーマット
         
         Args:
-            transactions: トランザクションデータのリスト
+            financial_transactions: 取引データのリスト
             
         Returns:
-            str: フォーマットされたトランザクション概要
+            str: フォーマットされた取引データ概要
         """
-        transaction_summary = ""
-        for tx in transactions:
-            transaction_summary += f"カテゴリ: {tx['category']}, 金額: {tx['amount']}円\n"
-        return transaction_summary
+        formatted_transaction_summary = ""
+        for transaction_data in financial_transactions:
+            formatted_transaction_summary += f"カテゴリ: {transaction_data['category']}, 金額: {transaction_data['amount']}円\n"
+        return formatted_transaction_summary
     
-    def generate_financial_insights(self, preferences, transactions: List[dict]) -> List[str]:
+    def generate_financial_insights(self, preference_entities, financial_transactions: List[dict]) -> List[str]:
         """
         財務インサイトを生成
         
         Args:
-            preferences: ユーザーの設定データ
-            transactions: トランザクションデータのリスト
+            preference_entities: ユーザーの設定データ
+            financial_transactions: 取引データのリスト
             
         Returns:
             List[str]: 生成されたインサイトのリスト
@@ -72,67 +72,67 @@ class OpenAIService:
         
         try:
             # データをフォーマット
-            user_preferences = self._format_user_preferences(preferences)
-            transaction_summary = self._format_transaction_summary(transactions)
+            formatted_user_preferences = self._format_user_preferences(preference_entities)
+            formatted_transaction_summary = self._format_transaction_summary(financial_transactions)
             
             # プロンプトを生成
-            prompt = FinancialAnalysisPrompts.get_financial_insight_prompt(
-                user_preferences, transaction_summary
+            analysis_prompt = FinancialAnalysisPrompts.get_financial_insight_prompt(
+                formatted_user_preferences, formatted_transaction_summary
             )
             
             # OpenAI APIを呼び出し
-            response = self.client.chat.completions.create(
+            api_response = self.client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[
-                    {"role": "user", "content": prompt}
+                    {"role": "user", "content": analysis_prompt}
                 ],
                 max_tokens=500,
                 temperature=0.7
             )
             
             # レスポンスからinsightsを抽出
-            response_text = response.choices[0].message.content
+            response_content = api_response.choices[0].message.content
             
             try:
-                parsed_response = json.loads(response_text)
-                insights = parsed_response.get("insights", [])
+                parsed_json_response = json.loads(response_content)
+                generated_insights = parsed_json_response.get("insights", [])
                 
-                if not insights:  # insightsが空の場合
+                if not generated_insights:  # insightsが空の場合
                     return FinancialAnalysisPrompts.get_json_parse_error_insights()
                     
-                return insights
+                return generated_insights
                 
-            except json.JSONDecodeError as e:
-                print(f"JSONパースエラー: {e}")
+            except json.JSONDecodeError as json_error:
+                print(f"JSONパースエラー: {json_error}")
                 return FinancialAnalysisPrompts.get_json_parse_error_insights()
                 
-        except Exception as e:
-            print(f"OpenAI API呼び出しエラー: {e}")
+        except Exception as api_error:
+            print(f"OpenAI API呼び出しエラー: {api_error}")
             return FinancialAnalysisPrompts.get_fallback_insights()
     
-    def _format_available_recipes(self, recipe_templates) -> str:
+    def _format_available_recipes(self, recipe_template_entities) -> str:
         """
         利用可能なレシピテンプレートをフォーマット
         
         Args:
-            recipe_templates: RecipeTemplateModelのクエリ結果
+            recipe_template_entities: RecipeTemplateModelのクエリ結果
             
         Returns:
             str: フォーマットされたレシピテンプレート一覧
         """
-        available_recipes = ""
-        for recipe in recipe_templates:
-            available_recipes += f"ID: {recipe.id}, 名前: {recipe.name}, 説明: {recipe.description}\n"
-        return available_recipes
+        formatted_available_recipes = ""
+        for recipe_template_entity in recipe_template_entities:
+            formatted_available_recipes += f"ID: {recipe_template_entity.id}, 名前: {recipe_template_entity.name}, 説明: {recipe_template_entity.description}\n"
+        return formatted_available_recipes
     
-    def generate_recommended_recipe_templates(self, preferences, transactions: List[dict], recipe_templates) -> List[int]:
+    def generate_recommended_recipe_templates(self, preference_entities, financial_transactions: List[dict], recipe_template_entities) -> List[int]:
         """
         推奨レシピテンプレートIDを生成
         
         Args:
-            preferences: ユーザーの設定データ
-            transactions: トランザクションデータのリスト
-            recipe_templates: 利用可能なレシピテンプレート一覧
+            preference_entities: ユーザーの設定データ
+            financial_transactions: 取引データのリスト
+            recipe_template_entities: 利用可能なレシピテンプレート一覧
             
         Returns:
             List[int]: 推奨されたレシピテンプレートIDのリスト（最大3件）
@@ -144,44 +144,44 @@ class OpenAIService:
         
         try:
             # データをフォーマット
-            user_preferences = self._format_user_preferences(preferences)
-            transaction_summary = self._format_transaction_summary(transactions)
-            available_recipes = self._format_available_recipes(recipe_templates)
+            formatted_user_preferences = self._format_user_preferences(preference_entities)
+            formatted_transaction_summary = self._format_transaction_summary(financial_transactions)
+            formatted_available_recipes = self._format_available_recipes(recipe_template_entities)
             
             # プロンプトを生成
-            prompt = FinancialAnalysisPrompts.get_recipe_recommendation_prompt(
-                user_preferences, transaction_summary, available_recipes
+            recommendation_prompt = FinancialAnalysisPrompts.get_recipe_recommendation_prompt(
+                formatted_user_preferences, formatted_transaction_summary, formatted_available_recipes
             )
             
             # OpenAI APIを呼び出し
-            response = self.client.chat.completions.create(
+            api_response = self.client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[
-                    {"role": "user", "content": prompt}
+                    {"role": "user", "content": recommendation_prompt}
                 ],
                 max_tokens=800,
                 temperature=0.7
             )
             
             # レスポンスからレシピIDを抽出
-            response_text = response.choices[0].message.content
+            response_content = api_response.choices[0].message.content
             
             try:
-                parsed_response = json.loads(response_text)
-                recommended_ids = parsed_response.get("recommended_recipe_ids", [])
+                parsed_json_response = json.loads(response_content)
+                recommended_recipe_ids = parsed_json_response.get("recommended_recipe_ids", [])
                 
-                if not recommended_ids:  # IDが空の場合
+                if not recommended_recipe_ids:  # IDが空の場合
                     return FinancialAnalysisPrompts.get_json_parse_error_recipe_recommendations()
                 
                 # 最大3件に制限
-                return recommended_ids[:3]
+                return recommended_recipe_ids[:3]
                 
-            except json.JSONDecodeError as e:
-                print(f"JSONパースエラー: {e}")
+            except json.JSONDecodeError as json_error:
+                print(f"JSONパースエラー: {json_error}")
                 return FinancialAnalysisPrompts.get_json_parse_error_recipe_recommendations()
                 
-        except Exception as e:
-            print(f"OpenAI API呼び出しエラー: {e}")
+        except Exception as api_error:
+            print(f"OpenAI API呼び出しエラー: {api_error}")
             return FinancialAnalysisPrompts.get_fallback_recipe_recommendations()
 
 

@@ -5,6 +5,7 @@ from typing import Optional
 from .openai_service import OpenAIService, OpenAIServiceConfig
 from .financial_service import FinancialService
 from .recipe_recommendation_service import RecipeRecommendationService
+from .preference_service import PreferenceService
 
 
 class ServiceFactory:
@@ -57,60 +58,15 @@ class ServiceFactory:
             financial_service=financial_service,
             openai_service=openai_service
         )
+    
+    @staticmethod
+    def create_preference_service() -> PreferenceService:
+        """
+        ユーザー設定サービスを作成
+        
+        Returns:
+            PreferenceService: ユーザー設定サービスのインスタンス
+        """
+        return PreferenceService()
 
 
-# シングルトンパターンでサービスを管理する場合
-class ServiceManager:
-    """サービスマネージャー - シングルトンパターン"""
-    
-    _openai_service: Optional[OpenAIService] = None
-    _financial_service: Optional[FinancialService] = None
-    _recipe_recommendation_service: Optional[RecipeRecommendationService] = None
-    
-    @classmethod
-    def get_openai_service(cls) -> OpenAIService:
-        """
-        OpenAIサービスのシングルトンインスタンスを取得
-        
-        Returns:
-            OpenAIService: OpenAIサービスのインスタンス
-        """
-        if cls._openai_service is None:
-            cls._openai_service = OpenAIService()
-        return cls._openai_service
-    
-    @classmethod
-    def get_financial_service(cls) -> FinancialService:
-        """
-        財務サービスのシングルトンインスタンスを取得
-        
-        Returns:
-            FinancialService: 財務サービスのインスタンス
-        """
-        if cls._financial_service is None:
-            cls._financial_service = FinancialService()
-        return cls._financial_service
-    
-    @classmethod
-    def get_recipe_recommendation_service(cls) -> RecipeRecommendationService:
-        """
-        レシピ推奨サービスのシングルトンインスタンスを取得
-        
-        Returns:
-            RecipeRecommendationService: レシピ推奨サービスのインスタンス
-        """
-        if cls._recipe_recommendation_service is None:
-            financial_service = cls.get_financial_service()
-            openai_service = cls.get_openai_service()
-            cls._recipe_recommendation_service = RecipeRecommendationService(
-                financial_service=financial_service,
-                openai_service=openai_service
-            )
-        return cls._recipe_recommendation_service
-    
-    @classmethod
-    def reset_services(cls):
-        """サービスインスタンスをリセット（テスト用）"""
-        cls._openai_service = None
-        cls._financial_service = None
-        cls._recipe_recommendation_service = None
