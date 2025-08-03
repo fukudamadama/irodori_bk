@@ -25,6 +25,51 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(onboarding.router)
 
+@app.on_event("startup")
+async def startup_event():
+    """アプリケーション起動時のデモデータシード処理"""
+    
+    # SEED_DEMO_DATAがtrueの場合のみ実行
+    should_seed = os.getenv("SEED_DEMO_DATA", "false").lower() in ["true", "1", "yes"]
+    
+    if should_seed:
+        print("🌱 デモデータのシード処理を開始します...")
+        
+        try:
+            # FORCE_SEEDがfalseの場合は既存データをチェック
+            force_seed = os.getenv("FORCE_SEED", "false").lower() in ["true", "1", "yes"]
+            
+            if not force_seed and has_existing_data():
+                print("ℹ️  デモデータは既に存在します。スキップします。")
+                print("   強制実行したい場合は FORCE_SEED=true を設定してください。")
+                return
+            
+            # シード実行
+            from seeds import seed_sample_data
+            seed_sample_data(clear_existing=True)
+            
+            print("✅ デモデータのシードが完了しました")
+            
+        except Exception as e:
+            print(f"❌ デモデータのシード処理でエラーが発生しました: {e}")
+
+def has_existing_data():
+    """既存データの存在チェック"""
+    try:
+        from database import SessionLocal
+        from models import User
+        
+        db = SessionLocal()
+        # サンプルユーザー（ID=1）の存在確認
+        existing_user = db.query(User).filter(User.id == 1).first()
+        db.close()
+        
+        return existing_user is not None
+        
+    except Exception as e:
+        print(f"⚠️  データ存在チェックでエラー: {e}")
+        return False
+
 @app.get("/")
 def read_root():
     return {"message": "User Authentication API is running"}

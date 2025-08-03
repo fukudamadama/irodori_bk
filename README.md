@@ -12,6 +12,20 @@ pip install -r requirements.txt
 python main.py
 ```
 
+## シードデータ
+
+アプリケーション起動時に自動でサンプルデータを投入できます。
+
+### 設定方法
+
+環境変数でシード動作を制御：
+
+```bash
+# .env ファイルまたは環境変数で設定
+SEED_DEMO_DATA=true          # シードを実行するか
+FORCE_SEED=false             # 既存データがあっても強制実行するか
+```
+
 ## Azure Deployment
 
 This repository includes GitHub Actions workflow for automatic deployment to Azure App Service.
