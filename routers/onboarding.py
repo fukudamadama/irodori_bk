@@ -1,9 +1,19 @@
 from fastapi import APIRouter, Query, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from database import get_db
-from models import Preference as PreferenceModel, User, RecipeTemplate as RecipeTemplateModel, RuleTemplate as RuleTemplateModel
-from schemas import PreferenceCreate, Preference, RecipeTemplateWithRuleTemplates, RuleTemplateWithTriggerAndAction, Trigger, Action
+from models import (
+    Preference as PreferenceModel, User, RecipeTemplate as RecipeTemplateModel, 
+    RuleTemplate as RuleTemplateModel, Trigger as TriggerModel, Action as ActionModel,
+    RecipeTemplateRuleTemplate
+)
+from schemas import (
+    PreferenceCreate, Preference, 
+    RuleTemplateWithTriggerAndAction, Trigger, Action, FinancialReport,
+    RecipeTemplateWithUserAndRuleTemplatesWithTriggerAndAction, UserResponse
+)
 from typing import List
+from datetime import datetime
+from services.service_factory import ServiceFactory
 
 router = APIRouter(prefix="/onboarding", tags=["onboarding"])
 
@@ -116,32 +126,59 @@ def get_preferences(user_id: int = Query(..., description="ユーザーID", ge=1
     return result
 
 @router.get(
+    "/financial-report", 
+    response_model=FinancialReport,
+    summary="ユーザーの財務状況を分析し、インサイトと支出のカテゴリごとの合計金額を取得",
+)
+def get_financial_report(user_id: int = Query(..., description="ユーザーID", ge=1), db: Session = Depends(get_db)):
+    """ユーザーの財務レポートを生成"""
+    try:
+        # サービスを取得
+        financial_service = ServiceFactory.create_financial_service()
+        openai_service = ServiceFactory.create_openai_service()
+        
+        # 財務データを取得
+        financial_data = financial_service.generate_financial_report_data(user_id, db)
+        
+        # OpenAI サービスを使用して財務インサイトを生成
+        insights = openai_service.generate_financial_insights(
+            financial_data["user_preferences"], 
+            financial_data["transactions"]
+        )
+        
+        # レポートを構築
+        report = {
+            "user_id": user_id,
+            "date": datetime.now().strftime("%Y-%m-%d"),
+            "insights": insights,
+            "expenses_by_category": financial_data["expenses_by_category"]
+        }
+        
+        return report
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"財務レポートの生成に失敗しました: {str(e)}")
+
+@router.get(
     "/recommended_recipes", 
-    response_model=List[RecipeTemplateWithRuleTemplates],
+    response_model=List[RecipeTemplateWithUserAndRuleTemplatesWithTriggerAndAction],
     summary="ユーザーに対し導入が推奨されるレシピテンプレート(ルールテンプレートを含む)を取得",
 )
 def get_recommend_recipe_templates(user_id: int = Query(..., description="ユーザーID", ge=1), db: Session = Depends(get_db)):
-       
-    # ユーザーの属性・傾向に関する質問と回答を取得
-
-    # ユーザーの属性・傾向に関する質問と回答をもとに、導入が推奨されるレシピテンプレート(ルールテンプレートを含む)を取得
-    # すべてのレシピテンプレートとそれに紐づくルールテンプレートを取得
-    recipe_templates = db.query(RecipeTemplateModel).all()
-    result = []
-    for recipe in recipe_templates:
-        # SQLAlchemyオブジェクトから直接Pydanticスキーマを作成
-        rule_templates = [RuleTemplateWithTriggerAndAction.model_validate(rule) for rule in recipe.rule_templates]
-        result.append(RecipeTemplateWithRuleTemplates(
-            id=recipe.id,
-            name=recipe.name,
-            description=recipe.description,
-            author_id=recipe.author_id,
-            is_public=recipe.is_public,
-            likes_count=recipe.likes_count,
-            copies_count=recipe.copies_count,
-            created_at=recipe.created_at,
-            updated_at=recipe.updated_at,
-            rules=rule_templates
-        ))
-
-    return result
+    """ユーザーに推奨されるレシピテンプレートを取得"""
+    try:
+        # レシピ推奨サービスを取得
+        recipe_service = ServiceFactory.create_recipe_recommendation_service()
+        
+        # 推奨レシピを取得
+        return recipe_service.get_recommended_recipes_for_user(user_id, db)
+        
+    except ValueError as e:
+        # ユーザーが存在しない場合
+        raise HTTPException(status_code=404, detail=str(e))
+    except RuntimeError as e:
+        # サービス層でのエラー
+        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        # 予期しないエラー
+        raise HTTPException(status_code=500, detail=f"推奨レシピの取得に失敗しました: {str(e)}")

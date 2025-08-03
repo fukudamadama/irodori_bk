@@ -12,6 +12,23 @@ pip install -r requirements.txt
 python main.py
 ```
 
+## 環境変数
+
+```bash
+# .env ファイルに設定
+OPENAI_API_KEY=your_openai_api_key_here  # OpenAI APIキー（財務インサイト生成用）
+```
+
+## アーキテクチャ
+
+### サービス層
+
+`services/` ディレクトリに外部 API 連携やビジネスロジックを配置：
+
+- `openai_service.py`: OpenAI API 呼び出しと財務インサイト生成
+- `prompt_templates.py`: AI プロンプトテンプレートの管理
+- `service_factory.py`: サービスの依存性注入とファクトリーパターン
+
 ## シードデータ
 
 アプリケーション起動時に自動でサンプルデータを投入できます。

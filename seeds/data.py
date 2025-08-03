@@ -89,6 +89,58 @@ def insert_sample_triggers(db: Session):
                     "string"
                 ]
             }
+        },
+        {
+            "id": 9,
+            "name": "ガチャタイム（支出発生時ランダム）",
+            "description": "任意の支出が発生した時に一定確率でトリガーを実行します。",
+            "required_params": {
+                "trigger_probability": "number"
+            }
+        },
+        {
+            "id": 10,
+            "name": "レベルアップ検知",
+            "description": "累計貯金額が一定の閾値に達した時にトリガーを実行します。",
+            "required_params": {
+                "threshold_amount": "number"
+            }
+        },
+        {
+            "id": 11,
+            "name": "時空の歪み（特定時刻）",
+            "description": "毎日指定した時刻にタイムトラベルトリガーを実行します。",
+            "required_params": {
+                "hour": "number",
+                "minute": "number"
+            }
+        },
+        {
+            "id": 12,
+            "name": "推し活同額ミラーリング",
+            "description": "推し活関連カテゴリでの支出と同額の条件をトリガーします。",
+            "required_params": {
+                "mirror_categories": [
+                    "string"
+                ]
+            }
+        },
+        {
+            "id": 13,
+            "name": "推し活マイルストーン接近",
+            "description": "推しの生誕祭やライブなどの大切な日まで指定日数になった時にトリガーします。",
+            "required_params": {
+                "event_name": "string",
+                "days_before": "number"
+            }
+        },
+        {
+            "id": 14,
+            "name": "断捨離リマインダー",
+            "description": "定期的に推し活グッズの見直しを促すトリガーです。",
+            "required_params": {
+                "interval_weeks": "number"
+            }
         }
     ]
     
@@ -170,6 +222,73 @@ def insert_sample_actions(db: Session):
             "description": "指定した固定額を、ご褒美として別口座へ移します。",
             "required_params": {
                 "amount": "number",
+                "destination_account": "string"
+            }
+        },
+        {
+            "id": 107,
+            "name": "ガチャ抽選貯金",
+            "description": "ランダムな金額（指定範囲内）を貯金口座へ移します。",
+            "required_params": {
+                "min_amount": "number",
+                "max_amount": "number",
+                "destination_account": "string"
+            }
+        },
+        {
+            "id": 108,
+            "name": "宇宙船建造費積立",
+            "description": "支出額と同額を「火星移住基金」へ自動積立します。",
+            "required_params": {
+                "destination_account": "string"
+            }
+        },
+        {
+            "id": 109,
+            "name": "ドラゴン討伐EXP獲得",
+            "description": "支出額の一定割合をEXP（貯金）として獲得し、レベルアップボーナスも付与します。",
+            "required_params": {
+                "exp_percentage": "number",
+                "level_bonus": "number",
+                "destination_account": "string"
+            }
+        },
+        {
+            "id": 110,
+            "name": "時空分散投資",
+            "description": "指定金額を過去・現在・未来の3つの口座に分散投資します。",
+            "required_params": {
+                "amount": "number",
+                "past_account": "string",
+                "present_account": "string",
+                "future_account": "string"
+            }
+        },
+        {
+            "id": 111,
+            "name": "推しと共に成長投資",
+            "description": "推し活支出額と同額を「推し成長ファンド」へ投資します。",
+            "required_params": {
+                "destination_account": "string",
+                "growth_multiplier": "number"
+            }
+        },
+        {
+            "id": 112,
+            "name": "マイルストーン達成ボーナス",
+            "description": "推し活イベントまでの日数に応じてボーナス貯金を実行します。",
+            "required_params": {
+                "bonus_per_day": "number",
+                "destination_account": "string"
+            }
+        },
+        {
+            "id": 113,
+            "name": "断捨離売上投資",
+            "description": "推し活グッズの売上金を自動で投資口座へ移します。",
+            "required_params": {
+                "sale_amount": "number",
+                "investment_ratio": "number",
                 "destination_account": "string"
             }
         }
@@ -458,6 +577,224 @@ def insert_sample_rule_templates(db: Session):
             "copies_count": 0,
             "created_at": current_time,
             "updated_at": current_time
+        },
+        {
+            "id": 1009,
+            "name": "🎰 運命のガチャ貯金",
+            "description": "支出するたびに30%の確率でガチャが発動！1円〜1000円のランダム貯金でドキドキワクワク！",
+            "category": RuleCategory.INCREASE_SAVINGS,
+            "author_id": 1,
+            "trigger_id": 9,
+            "trigger_params": {
+                "trigger_probability": 30
+            },
+            "action_id": 107,
+            "action_params": {
+                "min_amount": 1,
+                "max_amount": 1000,
+                "destination_account": "gacha_savings"
+            },
+            "is_public": True,
+            "likes_count": 0,
+            "copies_count": 0,
+            "created_at": current_time,
+            "updated_at": current_time
+        },
+        {
+            "id": 1010,
+            "name": "🚀 地球最後の楽しみ貯金",
+            "description": "全ての支出を「地球での最後の楽しみ」として、同額を火星移住基金へ積立！地球を去る日のために！",
+            "category": RuleCategory.INCREASE_SAVINGS,
+            "author_id": 2,
+            "trigger_id": 3,
+            "trigger_params": {},
+            "action_id": 108,
+            "action_params": {
+                "destination_account": "mars_fund"
+            },
+            "is_public": True,
+            "likes_count": 0,
+            "copies_count": 0,
+            "created_at": current_time,
+            "updated_at": current_time
+        },
+        {
+            "id": 1011,
+            "name": "⚔️ 魔物討伐でEXP獲得",
+            "description": "支出という名の魔物を倒すたびに5%のEXPを獲得！勇者として成長しながら資産も増やそう！",
+            "category": RuleCategory.INCREASE_SAVINGS,
+            "author_id": 3,
+            "trigger_id": 3,
+            "trigger_params": {},
+            "action_id": 109,
+            "action_params": {
+                "exp_percentage": 5,
+                "level_bonus": 500,
+                "destination_account": "hero_savings"
+            },
+            "is_public": True,
+            "likes_count": 0,
+            "copies_count": 0,
+            "created_at": current_time,
+            "updated_at": current_time
+        },
+        {
+            "id": 1012,
+            "name": "🏆 レベルアップボーナス",
+            "description": "貯金額が10万円に達するたびにレベルアップ！勇者への道のりで特別ボーナス獲得！",
+            "category": RuleCategory.INCREASE_SAVINGS,
+            "author_id": 3,
+            "trigger_id": 10,
+            "trigger_params": {
+                "threshold_amount": 100000
+            },
+            "action_id": 106,
+            "action_params": {
+                "amount": 5000,
+                "destination_account": "hero_bonus"
+            },
+            "is_public": True,
+            "likes_count": 0,
+            "copies_count": 0,
+            "created_at": current_time,
+            "updated_at": current_time
+        },
+        {
+            "id": 1013,
+            "name": "⏰ 時空分散投資術",
+            "description": "毎日午後2時にタイムマシン起動！3000円を過去・現在・未来に均等分散投資でタイムパラドックス回避！",
+            "category": RuleCategory.ASSET_MANAGEMENT,
+            "author_id": 1,
+            "trigger_id": 11,
+            "trigger_params": {
+                "hour": 14,
+                "minute": 0
+            },
+            "action_id": 110,
+            "action_params": {
+                "amount": 3000,
+                "past_account": "past_investment",
+                "present_account": "present_savings",
+                "future_account": "future_fund"
+            },
+            "is_public": True,
+            "likes_count": 0,
+            "copies_count": 0,
+            "created_at": current_time,
+            "updated_at": current_time
+        },
+        {
+            "id": 1014,
+            "name": "💎 推しと共に輝く投資",
+            "description": "推し活に使った金額と同額×1.5倍を「推し成長ファンド」へ投資！推しと一緒に資産も成長させよう！",
+            "category": RuleCategory.ASSET_MANAGEMENT,
+            "author_id": 2,
+            "trigger_id": 12,
+            "trigger_params": {
+                "mirror_categories": [
+                    "推し活",
+                    "エンタメ",
+                    "グッズ"
+                ]
+            },
+            "action_id": 111,
+            "action_params": {
+                "destination_account": "oshi_growth_fund",
+                "growth_multiplier": 1.5
+            },
+            "is_public": True,
+            "likes_count": 0,
+            "copies_count": 0,
+            "created_at": current_time,
+            "updated_at": current_time
+        },
+        {
+            "id": 1015,
+            "name": "🎯 推し生誕祭カウントダウン貯金",
+            "description": "推しの生誕祭まで30日前からカウントダウン！毎日50円×残り日数分のボーナス貯金でお祝い資金を準備！",
+            "category": RuleCategory.INCREASE_SAVINGS,
+            "author_id": 1,
+            "trigger_id": 13,
+            "trigger_params": {
+                "event_name": "推し生誕祭",
+                "days_before": 30
+            },
+            "action_id": 112,
+            "action_params": {
+                "bonus_per_day": 50,
+                "destination_account": "birthday_fund"
+            },
+            "is_public": True,
+            "likes_count": 0,
+            "copies_count": 0,
+            "created_at": current_time,
+            "updated_at": current_time
+        },
+        {
+            "id": 1016,
+            "name": "🎪 ライブ遠征積立貯金",
+            "description": "ライブまで7日前から緊急積立開始！毎日100円×残り日数分で遠征費をしっかり確保！",
+            "category": RuleCategory.INCREASE_SAVINGS,
+            "author_id": 1,
+            "trigger_id": 13,
+            "trigger_params": {
+                "event_name": "ライブ遠征",
+                "days_before": 7
+            },
+            "action_id": 112,
+            "action_params": {
+                "bonus_per_day": 100,
+                "destination_account": "live_fund"
+            },
+            "is_public": True,
+            "likes_count": 0,
+            "copies_count": 0,
+            "created_at": current_time,
+            "updated_at": current_time
+        },
+        {
+            "id": 1017,
+            "name": "🗑️ 推し活グッズ断捨離で投資",
+            "description": "2週間ごとの断捨離リマインダーで不要グッズを売却！売上の80%を自動で投資に回して真の推し活資金を作る！",
+            "category": RuleCategory.ASSET_MANAGEMENT,
+            "author_id": 3,
+            "trigger_id": 14,
+            "trigger_params": {
+                "interval_weeks": 2
+            },
+            "action_id": 113,
+            "action_params": {
+                "sale_amount": 5000,
+                "investment_ratio": 80,
+                "destination_account": "oshi_investment"
+            },
+            "is_public": True,
+            "likes_count": 0,
+            "copies_count": 0,
+            "created_at": current_time,
+            "updated_at": current_time
+        },
+        {
+            "id": 1018,
+            "name": "💎 厳選推し活ファンド",
+            "description": "月1回の断捨離で本当に必要な推し活を見極め！売上の全額を「厳選推し活ファンド」として長期投資へ！",
+            "category": RuleCategory.ASSET_MANAGEMENT,
+            "author_id": 3,
+            "trigger_id": 14,
+            "trigger_params": {
+                "interval_weeks": 4
+            },
+            "action_id": 113,
+            "action_params": {
+                "sale_amount": 10000,
+                "investment_ratio": 100,
+                "destination_account": "select_oshi_fund"
+            },
+            "is_public": True,
+            "likes_count": 0,
+            "copies_count": 0,
+            "created_at": current_time,
+            "updated_at": current_time
         }
     ]
     
@@ -495,7 +832,7 @@ def insert_sample_recipe_templates(db: Session):
         {
             "id": 201,
             "name": "ジュースを水に変える魔法",
-            "description": "日々の小さな浪費を見直したい人！",
+            "description": "【推し活で財布がピンチな人向け・ゆるめ】コンビニでの無意識な浪費を見直したい人におすすめ！少しずつでも変化を実感できる優しいレシピ",
             "author_id": 1,
             "is_public": True,
             "likes_count": 112,
@@ -506,7 +843,7 @@ def insert_sample_recipe_templates(db: Session):
         {
             "id": 202,
             "name": "ヒヨコ貯金チャレンジ",
-            "description": "日々の小さな浪費を見直したい人！",
+            "description": "【推し活初心者向け・ゆるめ】推しにお金を使いすぎて貯金ゼロの人でも大丈夫！小額からコツコツ始められる可愛い貯金術",
             "author_id": 2,
             "is_public": True,
             "likes_count": 200,
@@ -517,10 +854,87 @@ def insert_sample_recipe_templates(db: Session):
         {
             "id": 203,
             "name": "WHY 浪費 PEOPLE ! ? 🔥",
-            "description": "ストイックに節約し資産形成！",
+            "description": "【推し活ガチ勢向け・ストイック】推しへの愛は変えずに無駄遣いを徹底カット！本気で資産形成したい推し活民のための鬼レシピ",
             "author_id": 3,
             "is_public": True,
             "likes_count": 5,
+            "copies_count": 0,
+            "created_at": current_time,
+            "updated_at": current_time
+        },
+        {
+            "id": 204,
+            "name": "🎰 ガチャ貯金システム 🎰",
+            "description": "【推し活ガチャ好き向け・ゆるめ】課金感覚で楽しく貯金！支出するたびにランダム貯金で運試し。推しのガチャ資金も貯まる一石二鳥システム",
+            "author_id": 1,
+            "is_public": True,
+            "likes_count": 347,
+            "copies_count": 0,
+            "created_at": current_time,
+            "updated_at": current_time
+        },
+        {
+            "id": 205,
+            "name": "🚀 火星移住計画貯金 🚀",
+            "description": "【推し活で現実逃避したい人向け・ストイック】地球での推し活を「最後の楽しみ」として同額貯金。壮大な目標で楽しく節約意識を高める",
+            "author_id": 2,
+            "is_public": True,
+            "likes_count": 89,
+            "copies_count": 0,
+            "created_at": current_time,
+            "updated_at": current_time
+        },
+        {
+            "id": 206,
+            "name": "🐉 ドラゴン討伐家計術 ⚔️",
+            "description": "【推し活ゲーマー向け・ストイック】支出を倒すべき敵として攻略！レベルアップ要素で推し活資金も確実に増やすRPG式家計管理",
+            "author_id": 3,
+            "is_public": True,
+            "likes_count": 156,
+            "copies_count": 0,
+            "created_at": current_time,
+            "updated_at": current_time
+        },
+        {
+            "id": 207,
+            "name": "⏰ タイムトラベラー投資術 ⏰",
+            "description": "【推し活で将来不安な人向け・ストイック】過去・現在・未来の3つの時間軸で資産管理。SF好きな推し活民が楽しく長期投資できる仕組み",
+            "author_id": 1,
+            "is_public": True,
+            "likes_count": 234,
+            "copies_count": 0,
+            "created_at": current_time,
+            "updated_at": current_time
+        },
+        {
+            "id": 208,
+            "name": "🌸 推しと共に成長する資産形成 💎",
+            "description": "【推し活で罪悪感がある人向け・ゆるめ】推しへの愛と同じ分だけ自分にも投資！推し活を諦めずに資産も増やす究極の両立術",
+            "author_id": 2,
+            "is_public": True,
+            "likes_count": 445,
+            "copies_count": 0,
+            "created_at": current_time,
+            "updated_at": current_time
+        },
+        {
+            "id": 209,
+            "name": "💰 推し活マイルストーン貯金 🎯",
+            "description": "【推し活で目標が欲しい人向け・ゆるめ】推しの生誕祭やライブまでの期間を活用した目標設定型貯金。推し活イベントが貯金のモチベーションに変わる！",
+            "author_id": 1,
+            "is_public": True,
+            "likes_count": 78,
+            "copies_count": 0,
+            "created_at": current_time,
+            "updated_at": current_time
+        },
+        {
+            "id": 210,
+            "name": "⚡ 推し活断捨離チャレンジ 🗑️",
+            "description": "【推し活グッズが溢れてる人向け・ストイック】不要な推し活グッズを売って投資資金に！「真の推し活」を見極めて資産と愛を両方増やす断捨離術",
+            "author_id": 3,
+            "is_public": True,
+            "likes_count": 23,
             "copies_count": 0,
             "created_at": current_time,
             "updated_at": current_time
@@ -569,6 +983,73 @@ def insert_sample_recipe_rule_relations(db: Session):
         {
             "recipe_template_id": 203,
             "rule_template_id": 1006
+        },
+        # 🎰 ガチャ貯金システム
+        {
+            "recipe_template_id": 204,
+            "rule_template_id": 1009
+        },
+        {
+            "recipe_template_id": 204,
+            "rule_template_id": 1004
+        },
+        # 🚀 火星移住計画貯金
+        {
+            "recipe_template_id": 205,
+            "rule_template_id": 1010
+        },
+        {
+            "recipe_template_id": 205,
+            "rule_template_id": 1001
+        },
+        # 🐉 ドラゴン討伐家計術
+        {
+            "recipe_template_id": 206,
+            "rule_template_id": 1011
+        },
+        {
+            "recipe_template_id": 206,
+            "rule_template_id": 1012
+        },
+        {
+            "recipe_template_id": 206,
+            "rule_template_id": 1007
+        },
+        # ⏰ タイムトラベラー投資術
+        {
+            "recipe_template_id": 207,
+            "rule_template_id": 1013
+        },
+        {
+            "recipe_template_id": 207,
+            "rule_template_id": 1006
+        },
+        # 🌸 推しと共に成長する資産形成
+        {
+            "recipe_template_id": 208,
+            "rule_template_id": 1014
+        },
+        {
+            "recipe_template_id": 208,
+            "rule_template_id": 1005
+        },
+        # 💰 推し活マイルストーン貯金
+        {
+            "recipe_template_id": 209,
+            "rule_template_id": 1015
+        },
+        {
+            "recipe_template_id": 209,
+            "rule_template_id": 1016
+        },
+        # ⚡ 推し活断捨離チャレンジ
+        {
+            "recipe_template_id": 210,
+            "rule_template_id": 1017
+        },
+        {
+            "recipe_template_id": 210,
+            "rule_template_id": 1018
         }
     ]
     

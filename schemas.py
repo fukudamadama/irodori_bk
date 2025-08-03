@@ -137,7 +137,7 @@ class RuleTemplateWithTriggerAndAction(BaseModel):
     class Config:
         from_attributes = True
 
-class RecipeTemplateWithRuleTemplates(BaseModel):
+class RecipeTemplateWithUserAndRuleTemplatesWithTriggerAndAction(BaseModel):
     id: int = Field(..., description="ID")
     name: str = Field(..., description="レシピテンプレートの名前")
     description: str = Field(..., description="レシピテンプレートの説明")
@@ -147,7 +147,19 @@ class RecipeTemplateWithRuleTemplates(BaseModel):
     copies_count: int = Field(..., description="コピー数")
     created_at: datetime = Field(..., description="作成日時")
     updated_at: datetime = Field(..., description="更新日時")
+    user: UserResponse = Field(..., description="ユーザー")
     rules: List[RuleTemplateWithTriggerAndAction] = Field(..., description="ルールテンプレートのリスト")
 
     class Config:
         from_attributes = True
+
+
+class CategorySummary(BaseModel):
+    category: str = Field(..., description="支出のカテゴリ")
+    total_amount: int = Field(..., description="支出の合計金額")
+
+class FinancialReport(BaseModel):
+    date: str = Field(..., description="日付")
+    user_id: int = Field(..., description="ユーザーID")
+    insights: List[str] = Field(..., description="インサイトのリスト")
+    expenses_by_category: List[CategorySummary] = Field(..., description="支出のカテゴリごとの合計金額")
