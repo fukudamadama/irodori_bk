@@ -153,6 +153,37 @@ class RecipeTemplateWithUserAndRuleTemplatesWithTriggerAndAction(BaseModel):
     class Config:
         from_attributes = True
 
+class RuleWithTriggerAndAction(BaseModel):
+    id: int = Field(..., description="ID")
+    name: str = Field(..., description="ルールの名前")
+    description: str = Field(..., description="ルールの説明")
+    category: RuleCategory = Field(..., description="ルールのカテゴリ")
+    created_at: datetime = Field(..., description="作成日時")
+    updated_at: datetime = Field(..., description="更新日時")
+    trigger: Trigger = Field(..., description="トリガー")
+    trigger_params: Any = Field(..., description="トリガーのパラメータ")
+    action: Action = Field(..., description="アクション")
+    action_params: Any = Field(..., description="アクションのパラメータ")
+
+    class Config:
+        from_attributes = True
+
+class RecipeWithUserAndRulesWithTriggerAndAction(BaseModel):
+    id: int = Field(..., description="ID")
+    name: str = Field(..., description="レシピの名前")
+    description: str = Field(..., description="レシピの説明")
+    created_at: datetime = Field(..., description="作成日時")
+    updated_at: datetime = Field(..., description="更新日時")
+    user: UserResponse = Field(..., description="ユーザー")
+    rules: List[RuleWithTriggerAndAction] = Field(..., description="ルールのリスト")
+
+    class Config:
+        from_attributes = True
+
+
+class RecipeCreate(BaseModel):
+    user_id: int = Field(..., description="ユーザーID")
+    template_id: int = Field(..., description="レシピテンプレートID")
 
 class CategorySummary(BaseModel):
     category: str = Field(..., description="支出のカテゴリ")

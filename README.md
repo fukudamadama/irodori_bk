@@ -52,3 +52,5 @@ This repository includes GitHub Actions workflow for automatic deployment to Azu
 - `GET /onboarding/preferences` - 特定のユーザーに紐づくすべてのユーザー傾向を一括で取得
 - `GET /onboarding/financial-report` - ユーザーの財務状況を分析し、インサイトと支出のカテゴリごとの合計金額を取得
 - `GET /onboarding/recommended_recipes` - ユーザーに対し導入が推奨されるレシピテンプレート(ルールテンプレートを含む)を取得
+- `POST /onboarding/recipe` - レシピテンプレートをコピーして、ユーザーのレシピとして保存
+- `GET /onboarding/recipes` - ユーザーが利用中のレシピのリストを取得

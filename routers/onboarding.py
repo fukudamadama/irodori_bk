@@ -3,12 +3,15 @@ from sqlalchemy.orm import Session
 from database import get_db
 from schemas import (
     PreferenceCreate, Preference, FinancialReport,
-    RecipeTemplateWithUserAndRuleTemplatesWithTriggerAndAction
+    RecipeWithUserAndRulesWithTriggerAndAction,
+    RecipeTemplateWithUserAndRuleTemplatesWithTriggerAndAction,
+    RecipeCreate
 )
 from typing import List
 from datetime import datetime
 from services.service_factory import ServiceFactory
 from services.preference_service import PreferenceService
+from services.recipe_service import RecipeService
 
 router = APIRouter(prefix="/onboarding", tags=["onboarding"])
 
@@ -111,3 +114,31 @@ def get_recommend_recipe_templates(user_id: int = Query(..., description="ユー
     except Exception as e:
         # 予期しないエラー
         raise HTTPException(status_code=500, detail=f"推奨レシピの取得に失敗しました: {str(e)}")
+
+@router.post(
+    "/recipe", 
+    response_model=RecipeWithUserAndRulesWithTriggerAndAction,
+    summary="レシピテンプレートをコピーして、ユーザーのレシピテンプレートとして保存",
+)
+def create_recipe(recipe_data: RecipeCreate, db_session: Session = Depends(get_db)):
+    """レシピテンプレートをコピーして、ユーザーのレシピテンプレートとして保存"""
+    try:
+        return RecipeService.create_recipe(recipe_data.template_id, recipe_data.user_id, db_session)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"レシピの作成に失敗しました: {str(e)}")
+
+@router.get(
+    "/recipes", 
+    response_model=List[RecipeWithUserAndRulesWithTriggerAndAction],
+    summary="ユーザーが利用中のレシピのリストを取得",
+)
+def get_recipes(user_id: int = Query(..., description="ユーザーID", ge=1), db_session: Session = Depends(get_db)):
+    """ユーザーが利用中のレシピのリストを取得"""
+    try:
+        return RecipeService.get_recipes(user_id, db_session)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"レシピの取得に失敗しました: {str(e)}")

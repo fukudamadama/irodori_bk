@@ -6,6 +6,7 @@ from .recipe_recommendation_service import RecipeRecommendationService
 from .user_validation_service import UserValidationService
 from .preference_service import PreferenceService
 from .service_factory import ServiceFactory
+from .recipe_service import RecipeService
 
 __all__ = [
     'FinancialService',
@@ -13,5 +14,6 @@ __all__ = [
     'RecipeRecommendationService',
     'UserValidationService',
     'PreferenceService',
-    'ServiceFactory'
+    'ServiceFactory',
+    'RecipeService'
 ]
