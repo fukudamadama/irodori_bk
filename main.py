@@ -1,10 +1,18 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, File, UploadFile, HTTPException
+from tempfile import NamedTemporaryFile
+import tempfile
+from datetime import datetime
+from openai import OpenAI
+from dotenv import load_dotenv
 from starlette.middleware.sessions import SessionMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 from routers import auth
+from routers import talk
 import os
 
-app = FastAPI(title="User Authentication API", version="1.0.0")
+load_dotenv()
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+app = FastAPI(title="TANABOTA API", version="1.0.0")
 
 app.add_middleware(
     SessionMiddleware,
@@ -23,10 +31,12 @@ app.add_middleware(
 )
 
 app.include_router(auth.router)
+app.include_router(talk.router)
 
 @app.get("/")
 def read_root():
     return {"message": "User Authentication API is running"}
+
 
 # Azure App Service will use startup.py instead of this
 if __name__ == "__main__":
