@@ -18,8 +18,13 @@ def get_database_url():
     print(f"DB Config - Host: {db_host}, DB: {db_name}, User: {db_user}")
     
     if all([db_host, db_name, db_user, db_password]):
-        url = f"mysql+pymysql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}?ssl_ca={db_ssl_ca}&ssl_verify_cert=true&ssl_verify_identity=true"
-        print(f"Using Azure MySQL: {db_host}")
+        # ローカル環境の場合はSSLを無効にする
+        if db_host == "localhost":
+            url = f"mysql+pymysql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+            print(f"Using Local MySQL: {db_host}")
+        else:
+            url = f"mysql+pymysql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}?ssl_ca={db_ssl_ca}&ssl_verify_cert=true&ssl_verify_identity=true"
+            print(f"Using Azure MySQL: {db_host}")
         return url
     else:
         print("Falling back to SQLite")

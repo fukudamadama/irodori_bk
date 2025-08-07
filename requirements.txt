@@ -8,7 +8,7 @@ python-multipart==0.0.6
 pymysql==1.1.0
 cryptography==41.0.7
 python-dotenv==1.0.0
-itsdangerous
-openai
+itsdangerous==2.2.0
+openai==1.98.0
 whisper
 requests

@@ -1,6 +1,22 @@
-from sqlalchemy import Column, Integer, String, Date, DateTime
+from sqlalchemy import Column, Integer, String, Date, DateTime, ForeignKey, Boolean, JSON, Enum
+from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 from database import Base, engine
+from enums import RuleCategory
+
+# レシピテンプレートとルールテンプレートの多対多関係を管理する中間テーブル
+class RecipeTemplateRuleTemplate(Base):
+    __tablename__ = "recipe_templates_rule_templates"
+    
+    recipe_template_id = Column(Integer, ForeignKey('recipe_templates.id'), primary_key=True)
+    rule_template_id = Column(Integer, ForeignKey('rule_templates.id'), primary_key=True)
+
+# レシピとルールの多対多関係を管理する中間テーブル
+class RecipeRule(Base):
+    __tablename__ = "recipes_rules"
+    
+    recipe_id = Column(Integer, ForeignKey('recipes.id'), primary_key=True)
+    rule_id = Column(Integer, ForeignKey('rules.id'), primary_key=True)
 
 class User(Base):
     __tablename__ = "users"
@@ -17,5 +33,116 @@ class User(Base):
     company_name = Column(String(100), nullable=False)
     password_hash = Column(String(255), nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    # リレーション
+    rule_templates = relationship("RuleTemplate", back_populates="author")
+    recipe_templates = relationship("RecipeTemplate", back_populates="author")
+    rules = relationship("Rule", back_populates="user")
+    recipes = relationship("Recipe", back_populates="user")
+
+class Preference(Base):
+    __tablename__ = "preferences"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    question = Column(String(500), nullable=False)
+    selected_answers = Column(String(1000), nullable=False)  # セミコロン区切りの文字列
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+class Trigger(Base):
+    __tablename__ = "triggers"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), nullable=False)
+    description = Column(String(500), nullable=False)
+    required_params = Column(JSON, nullable=False)
+
+class Action(Base):
+    __tablename__ = "actions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), nullable=False)
+    description = Column(String(500), nullable=False)
+    required_params = Column(JSON, nullable=False)
+
+class RuleTemplate(Base):
+    __tablename__ = "rule_templates"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), nullable=False)
+    description = Column(String(500), nullable=False)
+    category = Column(Enum(RuleCategory), nullable=False)
+    author_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    trigger_id = Column(Integer, ForeignKey("triggers.id"), nullable=False)
+    trigger_params = Column(JSON, nullable=False)
+    action_id = Column(Integer, ForeignKey("actions.id"), nullable=False)
+    action_params = Column(JSON, nullable=False)
+    is_public = Column(Boolean, default=False, nullable=False)
+    likes_count = Column(Integer, default=0, nullable=False)
+    copies_count = Column(Integer, default=0, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+    # リレーション
+    author = relationship("User", back_populates="rule_templates")
+    trigger = relationship("Trigger")
+    action = relationship("Action")
+    recipe_templates = relationship("RecipeTemplate", secondary="recipe_templates_rule_templates", back_populates="rule_templates")
+
+class RecipeTemplate(Base):
+    __tablename__ = "recipe_templates"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), nullable=False)
+    description = Column(String(500), nullable=False)
+    author_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    is_public = Column(Boolean, default=False, nullable=False)
+    likes_count = Column(Integer, default=0, nullable=False)
+    copies_count = Column(Integer, default=0, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+    # リレーション
+    author = relationship("User", back_populates="recipe_templates")
+    rule_templates = relationship("RuleTemplate", secondary="recipe_templates_rule_templates", back_populates="recipe_templates")
+
+class Rule(Base):
+    __tablename__ = "rules"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    name = Column(String(100), nullable=False)
+    description = Column(String(500), nullable=False)
+    category = Column(Enum(RuleCategory), nullable=False)
+    template_id = Column(Integer, ForeignKey("rule_templates.id"), nullable=True)
+    trigger_id = Column(Integer, ForeignKey("triggers.id"), nullable=False)
+    trigger_params = Column(JSON, nullable=False)
+    action_id = Column(Integer, ForeignKey("actions.id"), nullable=False)
+    action_params = Column(JSON, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+    # リレーション
+    user = relationship("User", back_populates="rules")
+    template = relationship("RuleTemplate")
+    trigger = relationship("Trigger")
+    action = relationship("Action")
+    recipes = relationship("Recipe", secondary="recipes_rules", back_populates="rules")
+
+class Recipe(Base):
+    __tablename__ = "recipes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), nullable=False)
+    description = Column(String(500), nullable=False)
+    template_id = Column(Integer, ForeignKey("recipe_templates.id"), nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+    # リレーション
+    user = relationship("User", back_populates="recipes")
+    template = relationship("RecipeTemplate")
+    rules = relationship("Rule", secondary="recipes_rules", back_populates="recipes")
 
 Base.metadata.create_all(bind=engine)

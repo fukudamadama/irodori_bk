@@ -1,6 +1,8 @@
-from pydantic import BaseModel, EmailStr, validator
-from datetime import date
+from pydantic import BaseModel, EmailStr, validator, Field
+from datetime import date, datetime
+from typing import List, Any
 import re
+from enums import RuleCategory
 
 class UserRegister(BaseModel):
     last_name: str
@@ -67,3 +69,128 @@ class UserResponse(BaseModel):
 
 class MessageResponse(BaseModel):
     message: str
+
+class Preference(BaseModel):
+    id: int = Field(..., description="ID")
+    user_id: int = Field(..., description="ユーザーID")
+    question: str = Field(..., description="質問の内容", example="好きな色は何ですか？")
+    selected_answers: List[str] = Field(..., description="選択された回答のリスト（複数選択可能）", example=["赤", "青"])
+
+class PreferenceCreate(BaseModel):
+    user_id: int = Field(..., description="ユーザーID", gt=0)
+    question: str = Field(..., description="質問の内容", min_length=1, example="好きな色は何ですか？")
+    selected_answers: List[str] = Field(..., description="選択された回答のリスト（複数選択可能）", min_items=1, example=["赤", "青"])
+
+    @validator('user_id')
+    def validate_user_id(cls, v):
+        if v <= 0:
+            raise ValueError('ユーザーIDは1以上の値を指定してください')
+        return v
+
+    @validator('question')
+    def validate_question(cls, v):
+        if not v or not v.strip():
+            raise ValueError('質問内容を入力してください')
+        return v.strip()
+
+    @validator('selected_answers')
+    def validate_selected_answers(cls, v):
+        if not v:
+            raise ValueError('回答を1つ以上選択してください')
+        return v
+
+
+class Trigger(BaseModel):
+    id: int = Field(..., description="ID")
+    name: str = Field(..., description="トリガーの名前")
+    description: str = Field(..., description="トリガーの説明")
+    required_params: Any = Field(..., description="必要なパラメータ")
+
+    class Config:
+        from_attributes = True
+
+class Action(BaseModel):
+    id: int = Field(..., description="ID")
+    name: str = Field(..., description="アクションの名前")
+    description: str = Field(..., description="アクションの説明")
+    required_params: Any = Field(..., description="必要なパラメータ")
+
+    class Config:
+        from_attributes = True
+
+class RuleTemplateWithTriggerAndAction(BaseModel):
+    id: int = Field(..., description="ID")
+    name: str = Field(..., description="ルールテンプレートの名前")
+    description: str = Field(..., description="ルールテンプレートの説明")
+    category: RuleCategory = Field(..., description="ルールテンプレートのカテゴリ")
+    author_id: int = Field(..., description="作成者のユーザーID")
+    is_public: bool = Field(..., description="公開設定")
+    likes_count: int = Field(..., description="いいね数")
+    copies_count: int = Field(..., description="コピー数")
+    created_at: datetime = Field(..., description="作成日時")
+    updated_at: datetime = Field(..., description="更新日時")
+    trigger: Trigger = Field(..., description="トリガー")
+    trigger_params: Any = Field(..., description="トリガーのパラメータ")  
+    action: Action = Field(..., description="アクション")
+    action_params: Any = Field(..., description="アクションのパラメータ")
+
+    class Config:
+        from_attributes = True
+
+class RecipeTemplateWithUserAndRuleTemplatesWithTriggerAndAction(BaseModel):
+    id: int = Field(..., description="ID")
+    name: str = Field(..., description="レシピテンプレートの名前")
+    description: str = Field(..., description="レシピテンプレートの説明")
+    author_id: int = Field(..., description="作成者のユーザーID")
+    is_public: bool = Field(..., description="公開設定")
+    likes_count: int = Field(..., description="いいね数")
+    copies_count: int = Field(..., description="コピー数")
+    created_at: datetime = Field(..., description="作成日時")
+    updated_at: datetime = Field(..., description="更新日時")
+    user: UserResponse = Field(..., description="ユーザー")
+    rules: List[RuleTemplateWithTriggerAndAction] = Field(..., description="ルールテンプレートのリスト")
+
+    class Config:
+        from_attributes = True
+
+class RuleWithTriggerAndAction(BaseModel):
+    id: int = Field(..., description="ID")
+    name: str = Field(..., description="ルールの名前")
+    description: str = Field(..., description="ルールの説明")
+    category: RuleCategory = Field(..., description="ルールのカテゴリ")
+    created_at: datetime = Field(..., description="作成日時")
+    updated_at: datetime = Field(..., description="更新日時")
+    trigger: Trigger = Field(..., description="トリガー")
+    trigger_params: Any = Field(..., description="トリガーのパラメータ")
+    action: Action = Field(..., description="アクション")
+    action_params: Any = Field(..., description="アクションのパラメータ")
+
+    class Config:
+        from_attributes = True
+
+class RecipeWithUserAndRulesWithTriggerAndAction(BaseModel):
+    id: int = Field(..., description="ID")
+    name: str = Field(..., description="レシピの名前")
+    description: str = Field(..., description="レシピの説明")
+    created_at: datetime = Field(..., description="作成日時")
+    updated_at: datetime = Field(..., description="更新日時")
+    user: UserResponse = Field(..., description="ユーザー")
+    rules: List[RuleWithTriggerAndAction] = Field(..., description="ルールのリスト")
+
+    class Config:
+        from_attributes = True
+
+
+class RecipeCreate(BaseModel):
+    user_id: int = Field(..., description="ユーザーID")
+    template_id: int = Field(..., description="レシピテンプレートID")
+
+class CategorySummary(BaseModel):
+    category: str = Field(..., description="支出のカテゴリ")
+    total_amount: int = Field(..., description="支出の合計金額")
+
+class FinancialReport(BaseModel):
+    date: str = Field(..., description="日付")
+    user_id: int = Field(..., description="ユーザーID")
+    insights: List[str] = Field(..., description="インサイトのリスト")
+    expenses_by_category: List[CategorySummary] = Field(..., description="支出のカテゴリごとの合計金額")
