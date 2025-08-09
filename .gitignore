@@ -34,3 +34,4 @@ logs/
 
 # dama_test
 app.py
+static/
