@@ -338,6 +338,7 @@ def create_sample_users(db: Session):
             "phone_number": "080-1111-2222",
             "occupation": "デザイナー",
             "company_name": "株式会社CreativeStyle",
+            "nickname": "りじちょー",
             "password": "abc123"
         },
         {
@@ -351,6 +352,7 @@ def create_sample_users(db: Session):
             "phone_number": "090-3333-4444",
             "occupation": "会社員",
             "company_name": "株式会社テックフロント",
+            "nickname": "はとちゃん",
             "password": "def456"
         },
         {
@@ -364,6 +366,7 @@ def create_sample_users(db: Session):
             "phone_number": "070-5555-6666",
             "occupation": "エンジニア",
             "company_name": "株式会社データドリブン",
+            "nickname": "あついちゃん",
             "password": "ghi789"
         }
     ]
