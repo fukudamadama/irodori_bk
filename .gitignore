@@ -32,6 +32,10 @@ logs/
 # OS generated files
 .DS_Store
 
+# Audio files
+*.wav
+*.mp3
+
 # dama_test
 app.py
 static/
