@@ -35,3 +35,5 @@ logs/
 # dama_test
 app.py
 static/
+query.json
+voicevox_cloud.wav
