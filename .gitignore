@@ -41,3 +41,4 @@ app.py
 static/
 query.json
 voicevox_cloud.wav
+routers/talk_backup.py
