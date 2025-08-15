@@ -7,7 +7,8 @@ from openai import OpenAI
 from dotenv import load_dotenv
 from starlette.middleware.sessions import SessionMiddleware
 from fastapi.middleware.cors import CORSMiddleware
-from routers import auth, onboarding, talk
+from routers import auth, onboarding
+from routers.talk import router as talk_router
 
 load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -31,7 +32,7 @@ app.add_middleware(
 
 app.include_router(auth.router)
 
-app.include_router(talk.router)
+app.include_router(talk_router)
 
 app.include_router(onboarding.router)
 

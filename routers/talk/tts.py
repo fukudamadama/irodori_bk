@@ -1,18 +1,16 @@
+# routers/talk/tts.py
 import os
-from fastapi import File, UploadFile, HTTPException, APIRouter
-from fastapi.responses import JSONResponse, StreamingResponse
-import tempfile
 import httpx
-import json
-from pydantic import BaseModel, Field, conint, confloat
-from typing import Optional, AsyncIterator, Set, List
-from openai import OpenAI
+from typing import AsyncIterator, Set, List, Optional
+from fastapi import APIRouter, HTTPException, Body
+from fastapi.responses import JSONResponse, StreamingResponse
 from dotenv import load_dotenv
 
-router = APIRouter(tags=["talk"])
+from routers.talk.schemas import TTSRequest
+
+router = APIRouter()
 
 load_dotenv()
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 VOICEVOX_URL = os.getenv("VOICEVOX_URL", "http://localhost:50021")
 
@@ -22,106 +20,10 @@ MAX_AUDIO_SIZE = 10 * 1024 * 1024  # 10MB
 HTTP_CONNECT_TIMEOUT = 10.0
 HTTP_READ_TIMEOUT = 60.0
 
-#-----------------------------------------------------------------
-# Speech To Text API
-#-----------------------------------------------------------------
-@router.post("/transcribe", summary="音声ファイルから文字起こしをする")
-async def transcribe(file: UploadFile = File(...)):
-    suffix = os.path.splitext(file.filename or "")[1] or ".wav"
-    tmp_path = None
-    try:
-        # 一時ファイル作成
-        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-            tmp.write(await file.read())
-            tmp_path = tmp.name
 
-        # Whisper API に投げる
-        with open(tmp_path, "rb") as audio_file:
-            transcript = client.audio.transcriptions.create(
-                model="whisper-1",
-                file=audio_file
-            )
-        return {"text": transcript.text}
-
-    finally:
-        # 成否に関わらず削除
-        if tmp_path and os.path.exists(tmp_path):
-            try:
-                os.remove(tmp_path)
-            except Exception:
-                pass
-
-#-----------------------------------------------------------------
-# たなブタちゃんのお返事生成
-#-----------------------------------------------------------------
-class TalkRequest(BaseModel):
-    text: str
-
-class TalkResponse(BaseModel):
-    feedback: str
-
-# たなブタちゃんにアドバイスをもらう関数
-def generate_feedback(user_text: str) -> str:
-    #OpenAI APIに対するプロンプト
-    prompt = f"""
-    ユーザーは推し活を心から楽しみたいと思っています。
-    一方で、{user_text}の内容は、ユーザーのお金や推し活に関する悩みを表しています。
-    コンテキストを読み取りつつ、語尾に「ブヒ」をつけて100文字以内の相槌やアドバイスを返してください。
-    
-    JSON形式で返してください:
-    {{"feedback": "ここにコメント"}}
-    """
-
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": "あなたはお金の専門家で、ユーザーを心から応援する可愛らしいブタさんのマスコットキャラクターです。"},
-            {"role": "user", "content": prompt}
-        ],
-        response_format={ "type": "json_object" }
-    )
-
-    return response.choices[0].message.content.strip()
-
-
-@router.post("/feedback", response_model=TalkResponse, summary="たなブタちゃんから可愛いフィードバックをもらう")
-async def talk_feedback(req: TalkRequest):
-    try:
-        feedback_json = generate_feedback(req.text)
-        data = json.loads(feedback_json)
-        return TalkResponse(feedback=data.get("feedback", ""))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    
-#-----------------------------------------------------------------
-# Text To Speech API（VOICEVOX）
-#-----------------------------------------------------------------
-
-# --- Pydantic model with validation ---
-class TTSRequest(BaseModel):
-    text: str = Field(..., min_length=1)
-    # フェイルセーフ: 0–100 を許容（後段で実在チェック）
-    speaker: conint(ge=0, le=100) = 3
-
-    # 0 より大きい実数（None は可）
-    speedScale: Optional[confloat(gt=0)] = None
-    pitchScale: Optional[float] = None
-    intonationScale: Optional[float] = None
-    volumeScale: Optional[float] = None
-    prePhonemeLength: Optional[float] = None
-    postPhonemeLength: Optional[float] = None
-
-
-def clamp_positive(x: Optional[float], minv: float) -> Optional[float]:
-    if x is None:
-        return None
-    try:
-        v = float(x)
-        return minv if v <= 0 else v
-    except (TypeError, ValueError):
-        return minv
-
-
+# --------------------------------
+# Helpers
+# --------------------------------
 async def fetch_speaker_ids() -> Set[int]:
     """VOICEVOX の /speakers から有効な speaker ID 群を取得。"""
     try:
@@ -156,6 +58,9 @@ async def validate_speaker_or_fail(speaker: int):
         raise HTTPException(status_code=400, detail="無効な speaker ID です")
 
 
+# --------------------------------
+# Public APIs
+# --------------------------------
 @router.get("/voicevox/speakers")
 async def list_speakers():
     try:
@@ -216,8 +121,22 @@ async def _voicevox_synthesis_stream(query: dict, speaker: int) -> AsyncIterator
                 raise HTTPException(status_code=502, detail=f"VOICEVOX呼び出しで通信エラー: {e}")
 
 
-@router.post("/speech")
-async def tts(req: TTSRequest):
+@router.post("/speech", summary="ずんだもん音声合成を行う（リファクタ）")
+async def tts(
+    req: TTSRequest = Body(
+        ...,
+        example={
+            "text": "string",
+            "speaker": 3,
+            "speedScale": 1.2,
+            "pitchScale": 0.0,
+            "intonationScale": 1.0,
+            "volumeScale": 0.0,
+            "prePhonemeLength": 0.0,
+            "postPhonemeLength": 0.0,
+        },
+    )
+):
     text = (req.text or "").strip()
     if not text:
         raise HTTPException(status_code=400, detail="text は必須です。")
@@ -244,20 +163,19 @@ async def tts(req: TTSRequest):
     except httpx.HTTPError as e:
         raise HTTPException(status_code=502, detail=f"VOICEVOX呼び出しで通信エラー: {e}")
 
-    # パラメータ補正
-    spd = clamp_positive(req.speedScale, MIN_SPEED)
+    # パラメータ補正（0以下のspeedScaleはMIN_SPEEDに丸める）
+    def clamp_float(name: str, value: Optional[float]):
+        if value is not None:
+            query[name] = float(value)
+
+    spd = (req.speedScale if (req.speedScale is None or req.speedScale > 0) else MIN_SPEED)
     if spd is not None:
         query["speedScale"] = float(spd)
-    if req.pitchScale is not None:
-        query["pitchScale"] = float(req.pitchScale)
-    if req.intonationScale is not None:
-        query["intonationScale"] = float(req.intonationScale)
-    if req.volumeScale is not None:
-        query["volumeScale"] = float(req.volumeScale)
-    if req.prePhonemeLength is not None:
-        query["prePhonemeLength"] = float(req.prePhonemeLength)
-    if req.postPhonemeLength is not None:
-        query["postPhonemeLength"] = float(req.postPhonemeLength)
+    clamp_float("pitchScale", req.pitchScale)
+    clamp_float("intonationScale", req.intonationScale)
+    clamp_float("volumeScale", req.volumeScale)
+    clamp_float("prePhonemeLength", req.prePhonemeLength)
+    clamp_float("postPhonemeLength", req.postPhonemeLength)
 
     # ストリーミングレスポンス化（総サイズを監視）
     async def streamer() -> AsyncIterator[bytes]:
