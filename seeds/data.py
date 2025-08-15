@@ -329,8 +329,8 @@ def create_sample_users(db: Session):
     users_raw_data = [
         {
             "id": 1,
-            "last_name": "ちょー",
-            "first_name": "りじ",
+            "last_name": "はまだ",
+            "first_name": "りじちょー",
             "email": "riricho@example.com",
             "birthdate": date(1998, 7, 15),
             "postal_code": "185-0021",
@@ -344,7 +344,7 @@ def create_sample_users(db: Session):
         {
             "id": 2,
             "last_name": "はと",
-            "first_name": "ちゃん",
+            "first_name": "ちか",
             "email": "hato.tanaka@example.com",
             "birthdate": date(1995, 4, 1),
             "postal_code": "150-0002",
