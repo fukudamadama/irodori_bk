@@ -63,6 +63,7 @@ class UserResponse(BaseModel):
     phone_number: str
     occupation: str
     company_name: str
+    nickname: str = None
 
     class Config:
         from_attributes = True
@@ -194,3 +195,21 @@ class FinancialReport(BaseModel):
     user_id: int = Field(..., description="ユーザーID")
     insights: List[str] = Field(..., description="インサイトのリスト")
     expenses_by_category: List[CategorySummary] = Field(..., description="支出のカテゴリごとの合計金額")
+
+class UserNicknameSet(BaseModel):
+    user_id: int = Field(..., description="ユーザーID", gt=0)
+    nickname: str = Field(..., description="ニックネーム", min_length=1, max_length=10)
+
+    @validator('user_id')
+    def validate_user_id(cls, v):
+        if v <= 0:
+            raise ValueError('ユーザーIDは1以上の値を指定してください')
+        return v
+
+    @validator('nickname')
+    def validate_nickname(cls, v):
+        if not v or not v.strip():
+            raise ValueError('ニックネームを入力してください')
+        if len(v.strip()) > 10:
+            raise ValueError('ニックネームは10文字以内で入力してください')
+        return v.strip()

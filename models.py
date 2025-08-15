@@ -32,6 +32,7 @@ class User(Base):
     occupation = Column(String(100), nullable=False)
     company_name = Column(String(100), nullable=False)
     password_hash = Column(String(255), nullable=False)
+    nickname = Column(String(10), nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # リレーション

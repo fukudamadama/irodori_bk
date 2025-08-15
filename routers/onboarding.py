@@ -5,15 +5,31 @@ from schemas import (
     PreferenceCreate, Preference, FinancialReport,
     RecipeWithUserAndRulesWithTriggerAndAction,
     RecipeTemplateWithUserAndRuleTemplatesWithTriggerAndAction,
-    RecipeCreate
+    RecipeCreate, UserNicknameSet, UserResponse
 )
 from typing import List
 from datetime import datetime
 from services.service_factory import ServiceFactory
 from services.preference_service import PreferenceService
 from services.recipe_service import RecipeService
+from services.user_service import UserService
 
 router = APIRouter(prefix="/onboarding", tags=["onboarding"])
+
+@router.put(
+    "/nickname", 
+    response_model=UserResponse, 
+    status_code=200,
+    summary="オンボーディング時にユーザーのニックネームを設定",
+)
+def set_nickname(nickname_data: UserNicknameSet, db_session: Session = Depends(get_db)):
+    """ユーザーのニックネームを設定"""
+    try:
+        return UserService.set_nickname(nickname_data, db_session)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="ニックネームの設定に失敗しました")
 
 @router.post(
     "/preference", 

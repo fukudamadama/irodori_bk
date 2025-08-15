@@ -329,8 +329,8 @@ def create_sample_users(db: Session):
     users_raw_data = [
         {
             "id": 1,
-            "last_name": "ちょー",
-            "first_name": "りじ",
+            "last_name": "はまだ",
+            "first_name": "りじちょー",
             "email": "riricho@example.com",
             "birthdate": date(1998, 7, 15),
             "postal_code": "185-0021",
@@ -338,12 +338,13 @@ def create_sample_users(db: Session):
             "phone_number": "080-1111-2222",
             "occupation": "デザイナー",
             "company_name": "株式会社CreativeStyle",
+            "nickname": "りじちょー",
             "password": "abc123"
         },
         {
             "id": 2,
             "last_name": "はと",
-            "first_name": "ちゃん",
+            "first_name": "ちか",
             "email": "hato.tanaka@example.com",
             "birthdate": date(1995, 4, 1),
             "postal_code": "150-0002",
@@ -351,6 +352,7 @@ def create_sample_users(db: Session):
             "phone_number": "090-3333-4444",
             "occupation": "会社員",
             "company_name": "株式会社テックフロント",
+            "nickname": "はとちゃん",
             "password": "def456"
         },
         {
@@ -364,6 +366,7 @@ def create_sample_users(db: Session):
             "phone_number": "070-5555-6666",
             "occupation": "エンジニア",
             "company_name": "株式会社データドリブン",
+            "nickname": "あついちゃん",
             "password": "ghi789"
         }
     ]
