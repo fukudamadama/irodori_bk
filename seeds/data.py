@@ -334,7 +334,7 @@ def create_sample_users(db: Session):
             "email": "riricho@example.com",
             "birthdate": date(1998, 7, 15),
             "postal_code": "185-0021",
-            "address": "東京都国分寺市南町3-20-3",
+            "address": "東京都国分寺市西町3-20-3",
             "phone_number": "080-1111-2222",
             "occupation": "デザイナー",
             "company_name": "株式会社CreativeStyle",
@@ -357,8 +357,8 @@ def create_sample_users(db: Session):
         },
         {
             "id": 3,
-            "last_name": "熱い",
-            "first_name": "JSON",
+            "last_name": "厚切り",
+            "first_name": "ジェーソン",
             "email": "atsui.json@example.com",
             "birthdate": date(2001, 11, 10),
             "postal_code": "160-0023",
@@ -366,7 +366,7 @@ def create_sample_users(db: Session):
             "phone_number": "070-5555-6666",
             "occupation": "エンジニア",
             "company_name": "株式会社データドリブン",
-            "nickname": "あついちゃん",
+            "nickname": "熱いJSON",
             "password": "ghi789"
         }
     ]
@@ -1140,3 +1140,45 @@ def create_sample_preferences(db: Session):
             db.add(preference)
     
     print(f"サンプルユーザープリファレンス {len(preferences_data)} 件投入完了")
+
+# ===== サンプルユーザーレシピ（ユーザーが選択したレシピ）関連 =====
+
+def seed_sample_user_recipes(session_maker=None):
+    if session_maker is None:
+        session_maker = SessionLocal
+    
+    db = session_maker()
+    try:
+        create_sample_user_recipes(db)
+        db.commit()
+    except Exception as e:
+        print(f"サンプルユーザーレシピデータ投入エラー: {e}")
+        db.rollback()
+        raise
+    finally:
+        db.close()
+
+def create_sample_user_recipes(db: Session):
+    from models import Recipe
+    current_time = datetime.now(timezone.utc)
+    
+    user_recipes_data = [
+        {
+            "id": 1,
+            "name": "ヒヨコ貯金チャレンジ",
+            "description": "【推し活初心者向け・ゆるめ】推しにお金を使いすぎて貯金ゼロの人でも大丈夫！小額からコツコツ始められる可愛い貯金術",
+            "template_id": 202,
+            "user_id": 2,
+            "created_at": current_time,
+            "updated_at": current_time
+        }
+    ]
+    
+    for recipe_data in user_recipes_data:
+        # 既存データをチェック
+        existing = db.query(Recipe).filter(Recipe.id == recipe_data["id"]).first()
+        if not existing:
+            recipe = Recipe(**recipe_data)
+            db.add(recipe)
+    
+    print(f"サンプルユーザーレシピ {len(user_recipes_data)} 件投入完了")
