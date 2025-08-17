@@ -7,7 +7,7 @@ from schemas import UserRegister, UserLogin, UserResponse, MessageResponse
 
 router = APIRouter(tags=["auth"])
 
-@router.post("/register", response_model=MessageResponse)
+@router.post("/register", response_model=UserResponse)
 def register_user(user_data: UserRegister, db: Session = Depends(get_db)):
     existing_user = db.query(User).filter(User.email == user_data.email).first()
     if existing_user:
@@ -20,9 +20,9 @@ def register_user(user_data: UserRegister, db: Session = Depends(get_db)):
         first_name=user_data.first_name,
         email=user_data.email,
         birthdate=user_data.birthdate,
-        postal_code=user_data.postal_code,
-        address=user_data.address,
-        phone_number=user_data.phone_number,
+        postal_code="",
+        address="",
+        phone_number="",
         occupation=user_data.occupation,
         company_name=user_data.company_name,
         password_hash=hashed_password
@@ -32,7 +32,16 @@ def register_user(user_data: UserRegister, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_user)
     
-    return MessageResponse(message="User registered successfully")
+    return UserResponse(
+        id=new_user.id,
+        last_name=new_user.last_name,
+        first_name=new_user.first_name,
+        email=new_user.email,
+        birthdate=new_user.birthdate,
+        occupation=new_user.occupation,
+        company_name=new_user.company_name,
+        nickname=new_user.nickname
+    )
 
 @router.post("/login", response_model=MessageResponse)
 def login_user(login_data: UserLogin, request: Request, db: Session = Depends(get_db)):

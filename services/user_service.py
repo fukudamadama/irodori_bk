@@ -47,9 +47,6 @@ class UserService:
             first_name=user.first_name,
             email=user.email,
             birthdate=user.birthdate,
-            postal_code=user.postal_code,
-            address=user.address,
-            phone_number=user.phone_number,
             occupation=user.occupation,
             company_name=user.company_name,
             nickname=user.nickname
@@ -78,9 +75,6 @@ class UserService:
             first_name=user.first_name,
             email=user.email,
             birthdate=user.birthdate,
-            postal_code=user.postal_code,
-            address=user.address,
-            phone_number=user.phone_number,
             occupation=user.occupation,
             company_name=user.company_name,
             nickname=user.nickname

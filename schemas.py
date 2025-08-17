@@ -1,7 +1,6 @@
 from pydantic import BaseModel, EmailStr, validator, Field
 from datetime import date, datetime
-from typing import List, Any
-import re
+from typing import List, Any, Optional
 from enums import RuleCategory
 
 class UserRegister(BaseModel):
@@ -9,32 +8,16 @@ class UserRegister(BaseModel):
     first_name: str
     email: EmailStr
     birthdate: date
-    postal_code: str
-    address: str
-    phone_number: str
     occupation: str
     company_name: str
     password: str
     password_confirm: str
 
-    @validator('last_name', 'first_name', 'address', 'occupation', 'company_name')
+    @validator('last_name', 'first_name', 'occupation', 'company_name')
     def validate_not_empty(cls, v):
         if not v or not v.strip():
             raise ValueError('This field cannot be empty')
         return v.strip()
-
-    @validator('postal_code')
-    def validate_postal_code(cls, v):
-        if not re.match(r'^\d{3}-\d{4}$', v):
-            raise ValueError('Postal code must be in format 123-4567')
-        return v
-
-    @validator('phone_number')
-    def validate_phone_number(cls, v):
-        digits_only = re.sub(r'\D', '', v)
-        if len(digits_only) < 10 or len(digits_only) > 11:
-            raise ValueError('Phone number must be 10-11 digits')
-        return digits_only
 
     @validator('password')
     def validate_password(cls, v):
@@ -58,12 +41,9 @@ class UserResponse(BaseModel):
     first_name: str
     email: str
     birthdate: date
-    postal_code: str
-    address: str
-    phone_number: str
     occupation: str
     company_name: str
-    nickname: str = None
+    nickname: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -195,6 +175,9 @@ class FinancialReport(BaseModel):
     user_id: int = Field(..., description="ユーザーID")
     insights: List[str] = Field(..., description="インサイトのリスト")
     expenses_by_category: List[CategorySummary] = Field(..., description="支出のカテゴリごとの合計金額")
+    income_total: int = Field(..., description="選択した銀行からの収入合計")
+    expense_total: int = Field(..., description="選択したカードからの支出合計（絶対値）")
+    balance_total: int = Field(..., description="収支（収入 - 支出）")
 
 class UserNicknameSet(BaseModel):
     user_id: int = Field(..., description="ユーザーID", gt=0)
