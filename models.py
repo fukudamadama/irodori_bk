@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Date, DateTime, ForeignKey, Boolean, JSON, Enum
+from sqlalchemy import Column, Integer, String, Date, DateTime, ForeignKey, Boolean, JSON, Enum, BigInteger, Numeric, UniqueConstraint 
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 from database import Base, engine
@@ -145,5 +145,46 @@ class Recipe(Base):
     user = relationship("User", back_populates="recipes")
     template = relationship("RecipeTemplate")
     rules = relationship("Rule", secondary="recipes_rules", back_populates="recipes")
+
+
+# ==== ここから たなぼた 取引・ログ テーブル（B版：FKのみ追加、整数・成功時のみ） ====
+
+class TanabotaTransaction(Base):
+    __tablename__ = "tanabota_transactions"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id", onupdate="RESTRICT", ondelete="RESTRICT"), nullable=False, index=True)
+    amount_paid = Column(Numeric(12, 0), nullable=False)         # 円のみ（小数なし）
+    tanabota_total = Column(Numeric(12, 0), nullable=False, default=0)  # 円のみ（小数なし）
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    # 1取引 : 多ログ（DBのON DELETE CASCADEを使うためpassive_deletes=True）
+    action_logs = relationship(
+        "TanabotaActionLog",
+        back_populates="transaction",
+        passive_deletes=True
+    )
+
+class TanabotaActionLog(Base):
+    __tablename__ = "tanabota_action_logs"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    transaction_id = Column(BigInteger, ForeignKey("tanabota_transactions.id", onupdate="RESTRICT", ondelete="CASCADE"), nullable=False, index=True)
+    rule_id = Column(Integer, ForeignKey("rules.id", onupdate="RESTRICT", ondelete="RESTRICT"), nullable=False, index=True)
+    action_id = Column(Integer, ForeignKey("actions.id", onupdate="RESTRICT", ondelete="RESTRICT"), nullable=False, index=True)
+
+    action_type = Column(String(64), nullable=False)         # 例: 'save_percentage' / 'roundup' / 'fixed'
+    action_params_json = Column(JSON, nullable=False)        # 実行時スナップショット
+    tanabota_amount = Column(Numeric(12, 0), nullable=False) # 円のみ（小数なし）
+    result_json = Column(JSON, nullable=True)                # 外部連携レス等（任意）
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    # 逆リレーション
+    transaction = relationship("TanabotaTransaction", back_populates="action_logs")
+    rule = relationship("Rule")     # 参照のみ
+    action = relationship("Action") # 参照のみ
+
+# ==== ここまで たなぼた 取引・ログ テーブル ====
+
 
 Base.metadata.create_all(bind=engine)
