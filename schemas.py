@@ -2,6 +2,8 @@ from pydantic import BaseModel, EmailStr, validator, Field
 from datetime import date, datetime
 from typing import List, Any, Optional
 from enums import RuleCategory
+from pydantic import conint
+
 
 class UserRegister(BaseModel):
     last_name: str
@@ -196,3 +198,28 @@ class UserNicknameSet(BaseModel):
         if len(v.strip()) > 10:
             raise ValueError('ニックネームは10文字以内で入力してください')
         return v.strip()
+
+class TanabotaExecuteRequest(BaseModel):
+    user_id: int = Field(..., ge=1)
+    amount: conint(ge=0, le=999_999_999_999)  # 円（整数）
+
+class TanabotaExecutionItem(BaseModel):
+    rule_id: int
+    action_id: int
+    action_type: str
+    tanabota_amount: int  # 円（整数）
+
+class TanabotaExecuteResponse(BaseModel):
+    transaction_id: int
+    amount_paid: int
+    tanabota_total: int
+    executions: List[TanabotaExecutionItem]
+
+class TanabotaTxSummary(BaseModel):
+    id: int
+    user_id: int
+    amount_paid: int
+    tanabota_total: int
+
+class TanabotaTxDetail(TanabotaTxSummary):
+    executions: List[TanabotaExecutionItem] = []

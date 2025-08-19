@@ -7,7 +7,9 @@ from openai import OpenAI
 from dotenv import load_dotenv
 from starlette.middleware.sessions import SessionMiddleware
 from fastapi.middleware.cors import CORSMiddleware
-from routers import auth, onboarding
+from routers import auth, onboarding, pos
+from sqlalchemy.orm import Session
+from database import SessionLocal
 from routers.talk import router as talk_router
 
 load_dotenv()
@@ -35,6 +37,8 @@ app.include_router(auth.router)
 app.include_router(talk_router)
 
 app.include_router(onboarding.router)
+
+app.include_router(pos.router)
 
 @app.on_event("startup")
 async def startup_event():
