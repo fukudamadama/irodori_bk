@@ -44,6 +44,7 @@ class TxSummary(BaseModel):
     user_id: int
     amount_paid: int
     tanabota_total: int
+    created_at: str
 
 class TxDetail(TxSummary):
     executions: List[ExecutionItem] = []
@@ -94,6 +95,7 @@ def get_transaction(transaction_id: int, db: Session = Depends(get_db)):
         user_id=tx.user_id,
         amount_paid=int(tx.amount_paid),
         tanabota_total=int(tx.tanabota_total),
+        created_at=tx.created_at.isoformat() if getattr(tx, "created_at", None) else "",
         executions=[
             ExecutionItem(
                 rule_id=l.rule_id,
@@ -125,6 +127,7 @@ def list_transactions(
             user_id=tx.user_id,
             amount_paid=int(tx.amount_paid),
             tanabota_total=int(tx.tanabota_total),
+            created_at=tx.created_at.isoformat() if getattr(tx, "created_at", None) else "",
         ) for tx in rows
     ]
 

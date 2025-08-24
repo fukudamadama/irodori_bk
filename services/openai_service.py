@@ -51,7 +51,11 @@ class OpenAIService:
         """
         formatted_transaction_summary = ""
         for transaction_data in financial_transactions:
-            formatted_transaction_summary += f"カテゴリ: {transaction_data['category']}, 金額: {transaction_data['amount']}円\n"
+            if isinstance(transaction_data, dict):
+                category = transaction_data.get("category")
+                amount = transaction_data.get("amount")
+                if category is not None and amount is not None:
+                    formatted_transaction_summary += f"カテゴリ: {category}, 金額: {amount}円\n"
         return formatted_transaction_summary
     
     def generate_financial_insights(self, preference_entities, financial_transactions: Any) -> List[str]:
@@ -160,7 +164,23 @@ class OpenAIService:
         try:
             # データをフォーマット
             formatted_user_preferences = self._format_user_preferences(preference_entities)
-            formatted_transaction_summary = self._format_transaction_summary(financial_transactions)
+
+            # 取引データを正規化（辞書 {income:[], expense:[]} or 配列 [..] の両方に対応）
+            normalized_transactions: List[dict] = []
+            try:
+                if isinstance(financial_transactions, dict):
+                    income_list = financial_transactions.get("income") or []
+                    expense_list = financial_transactions.get("expense") or []
+                    if isinstance(income_list, list):
+                        normalized_transactions.extend(income_list)
+                    if isinstance(expense_list, list):
+                        normalized_transactions.extend(expense_list)
+                elif isinstance(financial_transactions, list):
+                    normalized_transactions = financial_transactions
+            except Exception:
+                normalized_transactions = []
+
+            formatted_transaction_summary = self._format_transaction_summary(normalized_transactions)
             formatted_available_recipes = self._format_available_recipes(recipe_template_entities)
             
             # プロンプトを生成
