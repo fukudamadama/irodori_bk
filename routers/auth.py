@@ -43,14 +43,23 @@ def register_user(user_data: UserRegister, db: Session = Depends(get_db)):
         nickname=new_user.nickname
     )
 
-@router.post("/login", response_model=MessageResponse)
+@router.post("/login", response_model=UserResponse)
 def login_user(login_data: UserLogin, request: Request, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == login_data.email).first()
     if not user or not verify_password(login_data.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid email or password")
     
     request.session["user_id"] = user.id
-    return MessageResponse(message="Login successful")
+    return UserResponse(
+        id=user.id,
+        last_name=user.last_name,
+        first_name=user.first_name,
+        email=user.email,
+        birthdate=user.birthdate,
+        occupation=user.occupation,
+        company_name=user.company_name,
+        nickname=user.nickname
+    )
 
 @router.get("/logout", response_model=MessageResponse)
 def logout_user(request: Request):
