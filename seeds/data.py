@@ -740,7 +740,7 @@ def insert_sample_rule_templates(db: Session):
             "trigger_params": {},
             "action_id": 108,
             "action_params": {
-                "destination_account": "mars_fund"
+            "percentage":100,"destination_account": "mars_fund"
             },
             "is_public": True,
             "likes_count": 0,
@@ -760,7 +760,7 @@ def insert_sample_rule_templates(db: Session):
             "action_params": {
                 "exp_percentage": 5,
                 "level_bonus": 500,
-                "destination_account": "hero_savings"
+                "percentage":5,"destination_account": "hero_savings"
             },
             "is_public": True,
             "likes_count": 0,
@@ -829,7 +829,7 @@ def insert_sample_rule_templates(db: Session):
             },
             "action_id": 111,
             "action_params": {
-                "destination_account": "oshi_growth_fund",
+                "percentage":150,"destination_account": "oshi_growth_fund",
                 "growth_multiplier": 1.5
             },
             "is_public": True,
