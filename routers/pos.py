@@ -1,7 +1,7 @@
 # routers/pos.py  —— 認可ヘッダなし（デモ用）
 from __future__ import annotations
 
-from typing import List
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field, conint
@@ -26,6 +26,8 @@ def get_db():
 class ExecuteRequest(BaseModel):
     user_id: int = Field(..., ge=1)
     amount: conint(ge=0, le=999_999_999_999)
+    # 追加: カテゴリを任意指定（カテゴリ依存トリガー用）
+    category: Optional[str] = Field(None, description="支出カテゴリ（例: 'コンビニ', 'エンタメ', '推し活' など）")
 
 class ExecutionItem(BaseModel):
     rule_id: int
@@ -60,6 +62,7 @@ def execute(request: ExecuteRequest, db: Session = Depends(get_db)):
             db,
             user_id=request.user_id,
             amount_paid=int(request.amount),
+            category=request.category,  # ← 追加
         )
         db.commit()
     except HTTPException:
