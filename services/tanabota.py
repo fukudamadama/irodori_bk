@@ -15,20 +15,34 @@ from models import (
     Action,
 )
 
-# ここで seed と揃える: 3,4,6,9,12 は常に発火させる
-FORCE_FIRE_TRIGGER_IDS = {3, 4, 6, 9, 12}
-
 # ------------------------------------------------------------
 # 金額算出（日本円・整数）
 # ------------------------------------------------------------
 def compute_amount(action_params: Dict[str, Any], amount_paid: int) -> int:
+    """
+    既存 seed / マスタに合わせた柔軟な解釈。
+    サポート:
+      - percentage/percent（割合）
+      - amount（固定額）
+      - roundup: {"to": 100}  → 100円単位に切り上げ差額
+      - penalty_over_base: {"base_amount": 700} → max(0, amount - base)
+      - random range: {"min_amount": 1, "max_amount": 1000}
+      - percentage + bonus: {"percentage": 5, "level_bonus": 500}
+      - growth_multiplier: {"growth_multiplier": 1.5} → 150% として扱う
+    """
     p = action_params or {}
+    a = int(amount_paid)
+
     t = p.get("type")
 
     # 型が無い場合はキーから推測
     if not t:
-        if "percentage" in p or "percent" in p:
+        if "percentage" in p or "percent" in p or "growth_multiplier" in p:
             t = "save_percentage"
+        elif "base_amount" in p:
+            t = "penalty_over_base"
+        elif "min_amount" in p and "max_amount" in p:
+            t = "random_range"
         elif "amount" in p:
             t = "fixed"
         elif "to" in p:
@@ -37,11 +51,25 @@ def compute_amount(action_params: Dict[str, Any], amount_paid: int) -> int:
             return 0
 
     if t == "save_percentage":
+        # growth_multiplier(1.5) → 150% も受け入れる
+        if "growth_multiplier" in p and "percentage" not in p and "percent" not in p:
+            try:
+                pct = int(round(float(p["growth_multiplier"]) * 100))
+            except (TypeError, ValueError):
+                pct = 0
+        else:
+            try:
+                pct = int(p.get("percent", p.get("percentage", 0)) or 0)
+            except (TypeError, ValueError):
+                pct = 0
+        amt = (a * pct) // 100 if pct > 0 else 0
+
+        # 固定ボーナス加算（例: 109 の level_bonus）
         try:
-            pct = int(p.get("percent", p.get("percentage", 0)) or 0)
+            bonus = int(p.get("level_bonus", 0) or 0)
         except (TypeError, ValueError):
-            return 0
-        return (int(amount_paid) * pct) // 100 if pct > 0 else 0
+            bonus = 0
+        return max(0, amt + bonus)
 
     if t == "fixed":
         try:
@@ -57,8 +85,25 @@ def compute_amount(action_params: Dict[str, Any], amount_paid: int) -> int:
             return 0
         if step <= 0:
             return 0
-        rem = int(amount_paid) % step
+        rem = a % step
         return (step - rem) if rem else 0
+
+    if t == "penalty_over_base":
+        try:
+            base = int(p.get("base_amount", 0) or 0)
+        except (TypeError, ValueError):
+            base = 0
+        return max(0, a - base)
+
+    if t == "random_range":
+        try:
+            lo = int(p.get("min_amount", 0) or 0)
+            hi = int(p.get("max_amount", 0) or 0)
+        except (TypeError, ValueError):
+            return 0
+        if hi < lo:
+            lo, hi = hi, lo
+        return random.randint(lo, hi) if hi > 0 else 0
 
     return 0
 
@@ -70,7 +115,7 @@ def infer_action_type(p: Dict[str, Any]) -> str:
         return "unknown"
     if p.get("type"):
         return str(p["type"])
-    if "percentage" in p or "percent" in p:
+    if "percentage" in p or "percent" in p or "growth_multiplier" in p:
         return "save_percentage"
     if "amount" in p:
         return "fixed"
@@ -78,34 +123,28 @@ def infer_action_type(p: Dict[str, Any]) -> str:
         return "roundup"
     if "base_amount" in p:
         return "penalty_over_base"
+    if "min_amount" in p and "max_amount" in p:
+        return "random_range"
+    if "level_bonus" in p:
+        return "percentage_plus_bonus"
     return "unknown"
 
 # ------------------------------------------------------------
 # トリガ評価
 # ------------------------------------------------------------
 def trigger_match(
-    trigger_id: int | None,
     trigger_name: str | None,
     trigger_params: Dict[str, Any] | None,
     amount_paid: int,
     *,
-    category: str | None = None,
+    category: str | None = None
 ) -> bool:
-    """
-    NOTE:
-      - seed の仕様に合わせ、trigger_id が {3,4,6,9,12} の場合は必ず True を返す（=発火）。
-      - それ以外は従来通りの評価（カテゴリ系は category が無ければ不発）を行う。
-    """
-    # 明示的に強制発火
-    if trigger_id in FORCE_FIRE_TRIGGER_IDS:
-        return True
-
     name = (trigger_name or "").strip()
     tp = trigger_params or {}
     a = int(amount_paid)
 
-    # 3) 支出発生（全支出）
-    if name in {"支出発生"}:
+    # 3) 支出発生
+    if name == "支出発生":
         min_amt = tp.get("min_amount")
         if min_amt is not None:
             try:
@@ -118,9 +157,11 @@ def trigger_match(
     # 4) 特定カテゴリでの支出
     if name == "特定カテゴリでの支出":
         cats = set(tp.get("categories") or [])
+        if not cats:
+            return True  # 定義ミスの保険（categories未設定なら素通し）
         if not category:
             return False
-        return category in cats or "*" in cats
+        return category in cats
 
     # 6) 条件付き支出
     if name == "条件付き支出":
@@ -129,9 +170,15 @@ def trigger_match(
         except (TypeError, ValueError):
             return False
         op = (tp.get("operator") or ">").strip()
-        if tp.get("category"):
-            if not category or category != tp["category"]:
+
+        # カテゴリ条件が指定されていればチェック（無ければ金額条件だけで判定）
+        cat_cond = tp.get("category")
+        if cat_cond:
+            if not category:
                 return False
+            if category != cat_cond:
+                return False
+
         if   op == ">":  return a >  thr
         elif op == ">=": return a >= thr
         elif op == "<":  return a <  thr
@@ -150,11 +197,13 @@ def trigger_match(
     # 12) 推し活同額ミラーリング
     if name == "推し活同額ミラーリング":
         cats = set(tp.get("mirror_categories") or [])
+        if not cats:
+            return True  # 定義ミスの保険
         if not category:
             return False
-        return category in cats or "*" in cats
+        return category in cats
 
-    # その他（毎週/月末/ゼロ日/レベルアップ/時刻/マイルストーン/リマインダー）は POS 即時では扱わない
+    # その他（毎週/月末/ゼロ日/レベルアップ/時刻/マイルストーン/リマインダー）はPOS即時では扱わない
     return False
 
 # ------------------------------------------------------------
@@ -165,18 +214,12 @@ def execute_pos_payment(
     *,
     user_id: int,
     amount_paid: int,
-    category: str | None = None,
+    category: str | None = None,  # ← 追加
 ) -> Tuple[TanabotaTransaction, List[TanabotaActionLog]]:
     """
-    POS支払いイベントを元に、ユーザーの有効ルールを評価してたなぼた処理を行う。
-
-    Args:
-        user_id: 対象ユーザーID
-        amount_paid: 支払金額（円）
-        category: 支払いカテゴリ（例: "コンビニ"）。不明な場合は None
-
-    Returns:
-        (トランザクションヘッダ, アクションログ一覧)
+    1) ユーザーのレシピに紐づくルール取得
+    2) トリガ一致 → たなぼた額算出（整数円）
+    3) ヘッダ＋ログ保存（コミットは呼び出し側）
     """
     amount_paid = int(amount_paid)
 
@@ -209,14 +252,7 @@ def execute_pos_payment(
             continue
         seen_rule_ids.add(rule.id)
 
-        # trigger.id/name/params を渡して評価
-        if not trigger_match(
-            getattr(trigger, "id", None),
-            getattr(trigger, "name", None),
-            rule.trigger_params or {},
-            amount_paid,
-            category=category,
-        ):
+        if not trigger_match(trigger.name, rule.trigger_params or {}, amount_paid, category=category):
             continue
 
         amt = compute_amount(rule.action_params or {}, amount_paid)
@@ -230,7 +266,7 @@ def execute_pos_payment(
             action_type=infer_action_type(rule.action_params or {}),
             action_params_json=rule.action_params or {},
             tanabota_amount=amt,
-            result_json={"event_category": category} if category is not None else {"event_category": None},
+            result_json=None,
         )
         db.add(log)
         logs.append(log)

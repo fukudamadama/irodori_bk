@@ -22,7 +22,7 @@ app.add_middleware(
     max_age=int(os.getenv("SESSION_MAX_AGE", "3600"))
 )
 
-allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
+allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",")
 
 app.add_middleware(
     CORSMiddleware,

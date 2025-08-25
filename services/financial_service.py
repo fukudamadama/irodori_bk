@@ -22,10 +22,17 @@ class FinancialService:
             print(f"[FinancialService] Debug: {message}")
     
     def get_user_selected_providers(self, user_id: int, db_session: Session) -> List[str]:
-        """ユーザーが選択した金融プロバイダーのリストを取得"""
+        """ユーザーが選択した金融プロバイダーのリストを取得
+        現行仕様（連携カード/連携銀行）と旧仕様（FINANCIAL_PROVIDER_QUESTION）の両方に対応
+        """
+        accepted_questions = [
+            FINANCIAL_PROVIDER_QUESTION,
+            "連携カード",
+            "連携銀行",
+        ]
         preference_entities = db_session.query(PreferenceModel).filter(
             PreferenceModel.user_id == user_id,
-            PreferenceModel.question == FINANCIAL_PROVIDER_QUESTION
+            PreferenceModel.question.in_(accepted_questions)
         ).all()
         
         selected_providers = []
@@ -37,23 +44,35 @@ class FinancialService:
         self._debug_log(f"ユーザー {user_id} の金融プロバイダーを取得: {selected_providers}")
         return selected_providers
     
-    def get_financial_transactions(self, selected_providers: List[str]) -> List[Dict[str, Any]]:
-        """選択されたプロバイダーに基づいて金融取引データを取得"""
-        financial_transactions = []
+    def get_financial_transactions(self, selected_providers: List[str]) -> Dict[str, List[Dict[str, Any]]]:
+        """選択されたプロバイダーに基づいて金融取引データを取得（銀行/カードを分離）"""
+        income_transactions: List[Dict[str, Any]] = []
+        expense_transactions: List[Dict[str, Any]] = []
         
         for provider_data in DEMO_FINANCIAL_PROVIDERS:
             if provider_data["name"] in selected_providers:
-                financial_transactions.extend(provider_data["transactions"])
+                # 名前により銀行/カードを判定
+                is_bank = "銀行" in provider_data["name"]
+                is_card = "カード" in provider_data["name"]
+                if is_bank:
+                    income_transactions.extend(provider_data["transactions"])  # 正の金額が収入
+                elif is_card:
+                    expense_transactions.extend(provider_data["transactions"])  # 負の金額が支出
                 self._debug_log(f"{provider_data['name']} からの取引データを追加")
         
-        # フォールバック: マッチするプロバイダーがない場合はすべてのデモデータを使用
-        if not financial_transactions:
+        # フォールバック: 何も選択されなかった場合のみ全デモデータ
+        if not income_transactions and not expense_transactions:
             self._debug_log("マッチするプロバイダーが見つからないため、全てのデモデータを使用")
             for provider_data in DEMO_FINANCIAL_PROVIDERS:
-                financial_transactions.extend(provider_data["transactions"])
+                if "銀行" in provider_data["name"]:
+                    income_transactions.extend(provider_data["transactions"]) 
+                if "カード" in provider_data["name"]:
+                    expense_transactions.extend(provider_data["transactions"]) 
         
-        self._debug_log(f"取得した取引データの総数: {len(financial_transactions)}")
-        return financial_transactions
+        self._debug_log(
+            f"取得した取引データ: income={len(income_transactions)}件, expense={len(expense_transactions)}件"
+        )
+        return {"income": income_transactions, "expense": expense_transactions}
     
     def calculate_expenses_by_category(self, financial_transactions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """取引データからカテゴリ別支出を計算"""
@@ -83,10 +102,10 @@ class FinancialService:
         selected_providers = self.get_user_selected_providers(user_id, db_session)
         
         # 2. 選択されたプロバイダーの取引データを取得
-        financial_transactions = self.get_financial_transactions(selected_providers)
+        tx = self.get_financial_transactions(selected_providers)
         
-        # 3. カテゴリ別支出を計算
-        expenses_by_category = self.calculate_expenses_by_category(financial_transactions)
+        # 3. カテゴリ別支出を計算（カード支出のみ）
+        expenses_by_category = self.calculate_expenses_by_category(tx["expense"])
         
         # 4. ユーザーの設定を取得（OpenAI分析用）
         user_preference_entities = db_session.query(PreferenceModel).filter(
@@ -95,7 +114,7 @@ class FinancialService:
         
         return {
             "selected_providers": selected_providers,
-            "transactions": financial_transactions,
+            "transactions": {"income": tx["income"], "expense": tx["expense"]},
             "expenses_by_category": expenses_by_category,
             "user_preferences": user_preference_entities
         }

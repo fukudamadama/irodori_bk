@@ -1,9 +1,8 @@
-# routers/pos.py  —— 認可ヘッダなし（デモ用）
+# routers/pos.py
 from __future__ import annotations
-
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field, conint
 from sqlalchemy.orm import Session
 from sqlalchemy import select
@@ -22,10 +21,14 @@ def get_db():
     finally:
         db.close()
 
-# ======= Schemas (整数円) =======
+# ===== Schemas =====
 class ExecuteRequest(BaseModel):
     user_id: int = Field(..., ge=1)
-    amount: conint(ge=0, le=999_999_999_999)
+    amount: conint(ge=0, le=999_999_999_999)  # JPY integer
+    # ← 追加：カテゴリは任意。トリガ 4/12/6 の判定で使う
+    category: str | None = Field(
+        None, description="支出カテゴリ（例: コンビニ/推し活/食費-ランチ など）"
+    )
 
 class ExecutionItem(BaseModel):
     rule_id: int
@@ -39,95 +42,35 @@ class ExecuteResponse(BaseModel):
     tanabota_total: int
     executions: List[ExecutionItem]
 
-class TxSummary(BaseModel):
-    id: int
-    user_id: int
-    amount_paid: int
-    tanabota_total: int
-
-class TxDetail(TxSummary):
-    executions: List[ExecutionItem] = []
-
-# ======= Core API =======
-@router.post("/execute", response_model=ExecuteResponse, summary="POS決済の処理（日本円・整数）")
-def execute(request: ExecuteRequest, db: Session = Depends(get_db)):
-    user = db.get(User, request.user_id)
+# ===== Endpoint =====
+@router.post("/execute", response_model=ExecuteResponse)
+def execute(req: ExecuteRequest, db: Session = Depends(get_db)) -> ExecuteResponse:
+    # ユーザー存在チェック（必要なら）
+    user = db.get(User, req.user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="user not found")
 
-    try:
-        tx, logs = execute_pos_payment(
-            db,
-            user_id=request.user_id,
-            amount_paid=int(request.amount),
-        )
-        db.commit()
-    except HTTPException:
-        raise
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"internal error: {e}")
+    tx, logs = execute_pos_payment(
+        db,
+        user_id=req.user_id,
+        amount_paid=int(req.amount),
+        category=req.category,   # ← 追加
+    )
+    # ここでコミットは呼び出し側に任せても良いが、APIならコミットする方が扱いやすい
+    db.commit()
 
     return ExecuteResponse(
         transaction_id=tx.id,
-        amount_paid=int(tx.amount_paid),
-        tanabota_total=int(tx.tanabota_total),
+        amount_paid=tx.amount_paid,
+        tanabota_total=tx.tanabota_total,
         executions=[
             ExecutionItem(
-                rule_id=l.rule_id,
-                action_id=l.action_id,
-                action_type=l.action_type,
-                tanabota_amount=int(l.tanabota_amount),
-            ) for l in logs
+                rule_id=log.rule_id,
+                action_id=log.action_id,
+                action_type=log.action_type,
+                tanabota_amount=log.tanabota_amount,
+            )
+            for log in logs
         ],
     )
 
-# ======= Read APIs =======
-@router.get("/transactions/{transaction_id}", response_model=TxDetail, summary="取引詳細を取得")
-def get_transaction(transaction_id: int, db: Session = Depends(get_db)):
-    tx = db.get(TanabotaTransaction, transaction_id)
-    if not tx:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="transaction not found")
-    logs = db.query(TanabotaActionLog).filter_by(transaction_id=tx.id).all()
-    return TxDetail(
-        id=tx.id,
-        user_id=tx.user_id,
-        amount_paid=int(tx.amount_paid),
-        tanabota_total=int(tx.tanabota_total),
-        executions=[
-            ExecutionItem(
-                rule_id=l.rule_id,
-                action_id=l.action_id,
-                action_type=l.action_type,
-                tanabota_amount=int(l.tanabota_amount),
-            ) for l in logs
-        ],
-    )
-
-@router.get("/transactions", response_model=List[TxSummary], summary="ユーザーの取引一覧")
-def list_transactions(
-    user_id: int = Query(..., ge=1),
-    limit: int = Query(50, ge=1, le=200),
-    offset: int = Query(0, ge=0),
-    db: Session = Depends(get_db),
-):
-    q = (
-        select(TanabotaTransaction)
-        .where(TanabotaTransaction.user_id == user_id)
-        .order_by(TanabotaTransaction.id.desc())
-        .limit(limit)
-        .offset(offset)
-    )
-    rows = db.execute(q).scalars().all()
-    return [
-        TxSummary(
-            id=tx.id,
-            user_id=tx.user_id,
-            amount_paid=int(tx.amount_paid),
-            tanabota_total=int(tx.tanabota_total),
-        ) for tx in rows
-    ]
-
-@router.get("/health", summary="POS API ヘルスチェック")
-def health():
-    return {"ok": True}
