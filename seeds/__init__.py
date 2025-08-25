@@ -57,21 +57,13 @@ def seed_sample_data(clear_existing=True):
 
 def clear_existing_data(db: Session):
     
-    # プリファレンステーブルを削除
-    db.query(Preference).delete()
-    
-    # 関連テーブルから削除
+    # ユーザー実体は保持し、テンプレ＆マスタだけ再作成
     db.query(RecipeTemplateRuleTemplate).delete()
-    db.query(RecipeRule).delete()
-    
-    # メインテーブルを削除
-    db.query(Recipe).delete()
-    db.query(Rule).delete()
     db.query(RuleTemplate).delete()
     db.query(RecipeTemplate).delete()
     db.query(Action).delete()
     db.query(Trigger).delete()
-    
+
     # サンプルユーザーとデモユーザーを削除
     db.query(User).filter(User.id.in_([1, 2])).delete()
     
