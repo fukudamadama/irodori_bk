@@ -1,7 +1,7 @@
 # services/tanabota.py
 from __future__ import annotations
 import random
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List, Tuple, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import select, and_
 
@@ -207,6 +207,66 @@ def trigger_match(
     return False
 
 # ------------------------------------------------------------
+# デモ用フォールバック候補の選定
+# ------------------------------------------------------------
+def pick_demo_fallback(
+    rows: List[Tuple[Rule, Trigger, Action]],
+    amount_paid: int,
+    category: Optional[str],
+) -> Optional[Tuple[Rule, Trigger, Action, Optional[str], bool]]:
+    """
+    何もマッチしなかった時に "一番発火しやすい" 候補を選ぶ。
+    返り値: (rule, trigger, action, forced_category, force_gacha)
+    """
+    # 1. 無条件の「支出発生」
+    for rule, trig, act in rows:
+        if (trig.name or "").strip() == "支出発生":
+            return (rule, trig, act, None, False)
+
+    # 2. カテゴリ系（最初のカテゴリを強制セット）
+    for rule, trig, act in rows:
+        name = (trig.name or "").strip()
+        tp = rule.trigger_params or {}
+        if name == "特定カテゴリでの支出":
+            cats = tp.get("categories") or []
+            if cats:
+                return (rule, trig, act, str(cats[0]), False)
+        if name == "推し活同額ミラーリング":
+            cats = tp.get("mirror_categories") or []
+            if cats:
+                return (rule, trig, act, str(cats[0]), False)
+
+    # 3. ガチャ（確率を強制成功に）
+    for rule, trig, act in rows:
+        if (trig.name or "").strip() == "ガチャタイム（支出発生時ランダム）":
+            return (rule, trig, act, None, True)
+
+    # 4. 条件付き支出（今の金額で条件を満たすもの）
+    for rule, trig, act in rows:
+        if (trig.name or "").strip() == "条件付き支出":
+            tp = rule.trigger_params or {}
+            try:
+                thr = int(tp.get("amount"))
+            except Exception:
+                continue
+            op = (tp.get("operator") or ">").strip()
+            cat_ok = True
+            if tp.get("category"):
+                if category and category == tp["category"]:
+                    cat_ok = True
+                else:
+                    # デモ時は強制カテゴリセット
+                    category = tp["category"]
+                    cat_ok = True
+            if not cat_ok:
+                continue
+            if (op in (">", ">=") and amount_paid >= thr) or (op in ("<", "<=") and amount_paid <= thr):
+                return (rule, trig, act, category, False)
+
+    # 5. 見つからない場合は None
+    return None
+
+# ------------------------------------------------------------
 # メイン実行
 # ------------------------------------------------------------
 def execute_pos_payment(
@@ -214,12 +274,13 @@ def execute_pos_payment(
     *,
     user_id: int,
     amount_paid: int,
-    category: str | None = None,  # ← 追加
+    category: str | None = None,
 ) -> Tuple[TanabotaTransaction, List[TanabotaActionLog]]:
     """
     1) ユーザーのレシピに紐づくルール取得
     2) トリガ一致 → たなぼた額算出（整数円）
     3) ヘッダ＋ログ保存（コミットは呼び出し側）
+    4) 1件も無ければデモ用フォールバックで必ず1件作る
     """
     amount_paid = int(amount_paid)
 
@@ -247,6 +308,7 @@ def execute_pos_payment(
     logs: List[TanabotaActionLog] = []
     seen_rule_ids: set[int] = set()
 
+    # 2-1) 通常評価
     for rule, trigger, action in rows:
         if rule.id in seen_rule_ids:
             continue
@@ -272,7 +334,43 @@ def execute_pos_payment(
         logs.append(log)
         total += amt
 
-    # 3) 合計反映
+    # 3) フォールバック（デモ時に必ず1件）
+    if not logs:
+        pick = pick_demo_fallback(rows, amount_paid, category)
+        if pick:
+            rule, trigger, action, forced_cat, force_gacha = pick
+
+            # ガチャは強制成功。カテゴリ系は補完。
+            local_params = dict(rule.action_params or {})
+            local_trigger_name = (trigger.name or "").strip()
+            forced_info: Dict[str, Any] = {
+                "demo_forced_fire": True,
+                "original_trigger": local_trigger_name,
+            }
+            if forced_cat:
+                forced_info["forced_category"] = forced_cat
+
+            # 金額算出（そのままのアクションパラメータでOK）
+            amt = compute_amount(local_params, amount_paid)
+
+            # もし計算上ゼロなら、最後の保険として1%（最低1円）を適用
+            if amt <= 0:
+                amt = max(1, amount_paid // 100)
+
+            log = TanabotaActionLog(
+                transaction_id=tx.id,
+                rule_id=rule.id,
+                action_id=action.id,
+                action_type=infer_action_type(local_params),
+                action_params_json=local_params,
+                tanabota_amount=amt,
+                result_json=forced_info,
+            )
+            db.add(log)
+            logs.append(log)
+            total += amt
+
+    # 4) 合計反映
     tx.tanabota_total = total
     db.flush()
 
