@@ -66,7 +66,7 @@ def generate_message(
         model=MODEL_NAME,
         messages=messages,
         response_format={"type": "json_object"},
-        temperature=0.4
+        temperature=0.4,
         max_tokens=80,  # だいたい100字上限に近づける
     )
     return response.choices[0].message.content.strip()
