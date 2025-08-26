@@ -10,6 +10,11 @@ on:
       - main
   workflow_dispatch:
 
+# ★ここに追加（トップレベル）
+concurrency:
+  group: "aps-IRODORI-sub-01-${{ github.ref_name }}"
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -59,3 +64,4 @@ jobs:
           app-name: 'aps-IRODORI-sub-01'
           slot-name: 'Production'
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_9D9FB1D3D2A947B4997401AFB44C5967 }}
+          package: . 　# ★明示（ダウンロードしたアーティファクトのルートを送る）
