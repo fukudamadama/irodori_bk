@@ -4,7 +4,7 @@
 from typing import List
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_
-from models import RecipeTemplate as RecipeTemplateModel, RuleTemplate as RuleTemplateModel, User
+from models import RecipeTemplate as RecipeTemplateModel, RuleTemplate as RuleTemplateModel, Recipe as RecipeModel, User
 from schemas import (
     RecipeTemplateWithUserAndRuleTemplatesWithTriggerAndAction,
     RuleTemplateWithTriggerAndAction,
@@ -54,6 +54,9 @@ class RecipeRecommendationService:
         # 財務データを取得
         user_financial_data = self._get_financial_data(user_id, db_session)
         
+        # 財務データにuser_idを追加（推奨処理で使用するため）
+        user_financial_data["user_id"] = user_id
+        
         # 推奨レシピIDを取得
         recommended_recipe_ids = self._get_recommended_recipe_ids(user_financial_data, db_session)
         
@@ -83,10 +86,23 @@ class RecipeRecommendationService:
         if not self._openai_service:
             raise RuntimeError("OpenAIサービスが設定されていません")
         try:
-            # 全ての公開レシピテンプレートを取得
-            public_recipe_template_entities = db_session.query(RecipeTemplateModel).filter(
+            # ユーザーIDを取得
+            user_id = user_financial_data.get("user_id")
+            if not user_id:
+                raise RuntimeError("ユーザーIDが財務データに含まれていません")
+            
+            # ユーザーの既存レシピのtemplate_idを取得
+            existing_template_ids = self._get_user_existing_recipe_template_ids(user_id, db_session)
+            
+            # 全ての公開レシピテンプレートを取得（ユーザーの既存レシピを除外）
+            query = db_session.query(RecipeTemplateModel).filter(
                 RecipeTemplateModel.is_public == True
-            ).all()
+            )
+            
+            if existing_template_ids:
+                query = query.filter(~RecipeTemplateModel.id.in_(existing_template_ids))
+            
+            public_recipe_template_entities = query.all()
             
             # OpenAIサービスを使用してユーザーに適したレシピテンプレートを絞り込む
             return self._openai_service.generate_recommended_recipe_templates(
@@ -96,6 +112,17 @@ class RecipeRecommendationService:
             )
         except Exception as service_error:
             raise RuntimeError(f"レシピ推奨の生成に失敗しました: {str(service_error)}")
+    
+    def _get_user_existing_recipe_template_ids(self, user_id: int, db_session: Session) -> List[int]:
+        """指定されたユーザーの既存レシピのtemplate_idを取得"""
+        try:
+            existing_recipes = db_session.query(RecipeModel.template_id).filter(
+                RecipeModel.user_id == user_id
+            ).all()
+            
+            return [recipe.template_id for recipe in existing_recipes]
+        except Exception as db_error:
+            raise RuntimeError(f"ユーザーの既存レシピ取得に失敗しました: {str(db_error)}")
     
     def _fetch_recipe_templates_with_relations(
         self, 
