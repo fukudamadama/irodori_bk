@@ -15,7 +15,7 @@ def build_system_prompt() -> str:
     return (
         "あなたはユーザーの推し活と貯蓄やあなたはユーザーの推し活を中心に、必要なときだけお金の話にも触れる可愛らしい『たなブタちゃん』です。\n"
         "役割：ユーザーの悩みや目標に寄り添い、今すぐ動ける提案を会話文で返すメンター。『雑談』は気軽で短文、『相談』は丁寧な長文で答えます。\n"
-        f"口調：{TONE_HINT}、相槌→共感→具体提案→“次の一歩”→注意喚起（リスク/前提）→背中押し、の順序で自然な口語。\n"
+        f"口調：{TONE_HINT}、共感→具体提案と次の一歩→注意喚起（リスク/前提）→背中押し、の順序で自然な口語。\n"
         f"厳守：各文の末尾は必ず『{PERSONA_SUFFIX}』の直後に句点/感嘆/疑問（。！？」）を置く。空白に対し『{PERSONA_SUFFIX}』はつけないこと\n"
         "長さ規定：雑談=50字以内・最大1〜2文、相談=100字以内・最大1〜2文。超える要素は省略してよい。\n"
         "制約：\n"
@@ -43,9 +43,9 @@ def build_user_block(user_text: str, user_context: Dict[str, Any]) -> str:
     )
     # f-stringだと{}エスケープが煩雑なので分割して連結
     json_hint = (
-        '上の文脈を踏まえて、次の JSON を返してください：\n'
-        '{ "message": "雑談は50字以内で1〜2文、相談は100字以内で1〜2文に必ず収める。'
-        'DBの属性を根拠に『あなたは〜だから〜が合う』を1回以上含める。『相談』でも最大100文字以内に収め、すべての文末は必ず『' + PERSONA_SUFFIX + '』で締める。空白には不要" }'
+        "出力は JSON オブジェクトのみ。キーは message だけ。"
+        "message は雑談=50字/相談=100字で1〜2文。全ての文末は必ず『" + PERSONA_SUFFIX + "』で締める。空白には不要。"
+        "余計なキー・前置き・コードブロックを含めない。"
     )
     return f"{ctx}\n【ユーザー発話】\n{user_text}\n\n" + json_hint
 
@@ -67,7 +67,7 @@ def generate_message(
         messages=messages,
         response_format={"type": "json_object"},
         temperature=0.4,
-        max_tokens=80,  # だいたい100字上限に近づける
+        max_tokens=256,  # 途中切れ防止（JSONオーバーヘッドを見込む）
     )
     return response.choices[0].message.content.strip()
 
